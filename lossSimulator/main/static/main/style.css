@@ -1,0 +1,56 @@
+.CodeMirror {
+    height: auto;
+}
+
+.intro {
+    background-color: rgb(255, 143, 143);
+}
+
+.timer-container {
+    background-color: rgb(232, 207, 255);
+}
+
+.ip-selector {
+    background-color: rgb(255, 143, 165);
+}
+
+.ip-selector-row {
+    display: flex;
+    flex-direction: row;
+    gap: 10px;
+}
+
+.intro-text{
+    width: 100%;
+    height: auto;
+    min-height: 150px;
+    resize: none;
+    overflow: hidden;
+}
+
+.main-container {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.column-grid {
+    display: flex;
+    flex-direction: column;
+    row-gap: 10px;
+    padding: 20px;
+    justify-items: center;
+}
+
+.default-config-json {
+    background-color: rgb(191, 252, 252);
+}
+
+.title {
+    text-align: center;
+    font-size:30px;
+}
+
+.defined-loss-strategy {
+    background-color: rgb(175, 241, 219);
+}

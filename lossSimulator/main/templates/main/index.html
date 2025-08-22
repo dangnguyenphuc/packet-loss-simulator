@@ -1,0 +1,318 @@
+{% load static %}
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Loss Simulator</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/dracula.min.css">
+    <link rel="stylesheet" href="{% static 'main/style.css' %}">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js"></script>
+</head>
+<body>
+    <h1>Hello, {{ name }}!</h1>
+        
+    <div class="main-container">
+        <div class="column-grid intro">
+            <div class="title">
+                <span>How to use</span>
+            </div>
+<textarea class="intro-text" disabled>
+1. (Optional) Set time to apply config -> If not, The config will just stop when you delete it
+2. Select device IP you want to apply config
+3. Choose option to apply:
+    2.1 Default Config JSON:
+            + Defined JSON config for different network configuration
+            + Can edit option to apply your own config
+    2.2 Defined Loss Strategies (based on Mr.Tien(tiend3)'s strategies):
+            + Fix90: Fixed 90% packet loss rate
+            + Dynamic: Loss rate varies over time (each ... second)
+            + IncreaseOnly: Same as Dynamic but loss rate always increase
+</textarea>
+        </div>
+        
+    {% if name ==  "Stranger" %}
+        <h2>You don't have any permission, please call for help</h2>
+    {% else %}
+        
+        <div class="column-grid ip-selector">
+            <div class="title"><span>IP Selector</span></div>
+            
+            <div class="ip-selector-row">
+                <label for="ipAddresses">Choose an IP:</label>
+                <select id="ipAddresses" name="ipAddresses">
+                    <option value="{{ name }}" selected>{{ name }}</option>
+                    {% for device in devices %}
+                    <option value="{{ device }}">{{ device }}</option>
+                    {% endfor %}
+                </select>
+
+                <button type="button" id="fetchIPBtn">Reload</button>
+            </div>
+        </div>
+
+        <div class="column-grid timer-container">
+            <div class="title"><span>Timer</span></div>
+            <div id="timer">
+                <label>Time to apply config:</label>
+                <input type="number" id="hours" min="0" value="0" style="width:60px">
+                <span>:</span>
+                <input type="number" id="minutes" min="0" max="59" value="0" style="width:60px">
+                <span>:</span>
+                <input type="number" id="seconds" min="0" max="59" value="0" style="width:60px">
+            </div>
+        </div>
+
+        <div class="column-grid default-config-json">
+            <div class="title">
+                <span>Default Config JSON</span>
+            </div>
+
+                <div class="config-row">
+                    <label for="jsonFiles">Choose a config:</label>
+                    <select id="jsonFiles" name="jsonFiles">
+                        <option value="" selected>-- Select a config --</option>
+                        {% for file in files %}
+                        <option value="{{ file }}">{{ file|cut:".json" }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div id="editor">
+                    <form id="jsonForm" method="post">
+
+                        {% csrf_token %}
+                        <textarea id="json-editor" name="json_data">{{ json_content }}</textarea>
+                        <br>
+
+                        <br>
+                        <button type="submit" id="applyBtn">Apply</button>
+                        <button type="button" id="deleteBtn">Delete</button>
+                    </form>
+                </div>
+        </div>
+
+        <div class="column-grid defined-loss-strategy">
+            <div class="title">Defined Loss Strategies</div>
+
+        </div>
+    {% endif %}
+    </div>
+
+
+</body>
+
+<script type="module">
+    import { 
+        fetchJson, 
+        applyConfig, 
+        postShape, 
+        deleteShape, 
+        convertTimerToMs,
+        fetchIp
+    } from "{% static 'main/script.js' %}";
+    
+    // select DOM Objects
+    const editorContainer = document.getElementById("editor");
+    const editor =  CodeMirror.fromTextArea(document.getElementById("json-editor"), {
+                        mode: "application/json",
+                        theme: "dracula",
+                        lineNumbers: true,
+                    });
+    const selectEl = document.getElementById("jsonFiles");
+    const form = document.getElementById('jsonForm');
+    const deleteBtn = document.getElementById("deleteBtn");
+    const applyBtn = document.getElementById("applyBtn");
+    const fetchIpBtn = document.getElementById("fetchIPBtn");
+    const hour = document.getElementById("hours");
+    const minute = document.getElementById("minutes");
+    const second = document.getElementById("seconds");
+    const ipSelector = document.getElementById("ipAddresses");
+    let countDownInterval = null;
+
+    // functions
+    function setTimerValue(value)
+    {
+        const totalSeconds = Math.floor(value/1000);
+        const s = totalSeconds % 60;
+        second.value = s;
+        const m = Math.floor((totalSeconds % 3600) / 60);
+        if (m != minute.value)
+        {
+            minute.value = m;
+            const h = Math.floor(totalSeconds / 3600);
+            if (h != hour.value)
+            {
+                hour.value = h;
+            }
+        }
+    }
+
+    function resetTimer()
+    {
+        if (countDownInterval) clearInterval(countDownInterval);
+        countDownInterval = null;
+        hour.value = 0;
+        minute.value = 0;
+        second.value = 0;
+    }
+
+    function countDown(timeLeft)
+    {
+        if (countDownInterval) clearInterval(countDownInterval);
+
+        countDownInterval = setInterval(() => {
+            timeLeft -= 1000;
+
+            setTimerValue(timeLeft);
+
+            if (timeLeft <= 0) {
+                resetTimer();
+                isAppliedConf(false);
+                alert("[TIMER] DELETED CONFIG");
+            }
+        }, 1000);
+    }
+
+    function isAppliedConf(val)
+    {
+        if (val)
+        {
+            applyBtn.textContent = "Applied"
+            applyBtn.style.backgroundColor = "green";
+            applyBtn.style.color = "white";    
+            return;
+        }
+
+        applyBtn.textContent = "Apply"
+        applyBtn.style.backgroundColor = "buttonface";
+        applyBtn.style.color = "buttontext";
+
+    }
+    // end functions
+
+    // first load 
+    editorContainer.style.display = "none";
+
+    // on change option value
+    selectEl.addEventListener("change", async (event) => {
+        const selectedValue = event.target.value;
+        if (!selectedValue || selectedValue.length <= 0)
+        {
+            // if selectedValue is "" or null -> display none
+            editorContainer.style.display = "none";
+            return;
+        }
+        editorContainer.style.display = "block";
+        try{
+            const data = await fetchJson(selectedValue);
+            try {
+                editor.setValue(JSON.stringify(data.data.content, null, 2));
+            }
+            catch (err)
+            {
+                editor.setValue(JSON.stringify(data.data, null, 2));
+            }
+
+        }
+        catch (err)
+        {
+            editor.setValue("// " + err);
+        }
+    });
+
+    // form on submit
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        let jsonData;
+        try 
+        {
+            jsonData = JSON.parse(editor.getValue());
+        } catch (err) 
+        {
+            alert('Invalid JSON: ' + err.message);
+            return;
+        }
+        finally
+        {
+            const h = parseInt(hour.value, 0);
+            const m = parseInt(minute.value, 0);
+            const s = parseInt(second.value, 0);
+            
+            const timerValue = convertTimerToMs(h,m,s);
+            
+            // if timer is set
+            if (timerValue > 0)
+            {
+                try {
+                    await applyConfig(jsonData, timerValue);
+                    isAppliedConf(true)
+                    countDown(timerValue);
+                }
+                catch (e)
+                {
+                    alert("Error " + e);
+                }
+                return;
+            }
+            
+            // else just applied without time-limit
+            try 
+            {
+                const res = await postShape(jsonData);
+                alert("[POST] success")
+                isAppliedConf(true);
+            }
+            catch (err)
+            {
+                alert(err)
+                isAppliedConf(false);
+            }
+            
+        }
+    });
+
+    // delete btn on click
+    deleteBtn.addEventListener("click", async () => {
+        if (!confirm("Are you sure you want to delete this config?")) return;
+
+        try 
+        {
+            const res = await deleteShape();
+            if (!res.ok) throw new Error(res.status);
+            alert("Deleted successfully!");
+            isAppliedConf(false);
+            resetTimer();
+        } 
+        catch (err) 
+        {
+            console.error(err);
+            alert("Error deleting config with status: " + err);
+        }
+    });
+
+    fetchIpBtn.addEventListener("click", async () => {
+        ipSelector.disabled = true;
+        try{
+            const devices = (await fetchIp()).data;
+            // clear existing options
+            ipSelector.innerHTML = `<option value="{{ name }}" selected>{{ name }}</option>`;
+            devices.forEach(device => {
+                const opt = document.createElement("option");
+                opt.value = device;
+                opt.textContent = device;
+                ipSelector.appendChild(opt);
+            });
+        }
+        catch (err)
+        {
+            alert("[GET] Ips error")
+        }
+        finally
+        {
+            ipSelector.disabled=false;
+        }
+    });
+</script>
+</html>
