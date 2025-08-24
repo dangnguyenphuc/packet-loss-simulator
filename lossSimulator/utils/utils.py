@@ -74,16 +74,32 @@ class RequestUtils:
     @staticmethod
     def atcRequest(request: HttpRequest) -> JsonResponse:
 
-        endpoint = CONST.NETWORK_ATC_GATEWAY_IP + CONST.NETWORK_ATC_ENDPOINT + NetworkUtils.getIpString(request) + "/"
-        
+        try :
+            requestData = json.loads(request.body.decode("utf-8"))
+        except (UnicodeDecodeError, JSONDecodeError) as e:
+            return JsonResponse(
+                {
+                    "error": "Invalid JSON payload", 
+                    "details": str(e)
+                },
+                status=400
+            )
+
+        if 'ip' not in requestData:
+            return JsonResponse(
+                {
+                    "error": "Invalid request format. Missing 'ip' field"
+                },
+                status=400
+            )
+
+        endpoint = CONST.NETWORK_ATC_GATEWAY_IP + CONST.NETWORK_ATC_ENDPOINT + requestData['ip'] + "/"
+
         if request.method == 'POST':
-            try :
-                requestData = json.loads(request.body.decode("utf-8"))
-            except (UnicodeDecodeError, JSONDecodeError) as e:
+            if 'data' not in requestData:
                 return JsonResponse(
                     {
-                        "error": "Invalid JSON payload", 
-                        "details": str(e)
+                        "error": "Invalid request format. Missing 'data' field"
                     },
                     status=400
                 )
@@ -95,7 +111,7 @@ class RequestUtils:
                 response = requests.post(
                     endpoint,
                     headers=headers,
-                    json=requestData
+                    json=requestData['data']
                 )    
                 return JsonResponse(
                     {

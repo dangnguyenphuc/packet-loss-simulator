@@ -29,12 +29,16 @@ export async function fetchJson(filename) {
   }
 }
 
-export async function deleteShape(endpoint = PROXY_ENDPOINT) {
+export async function deleteShape(payload, endpoint = PROXY_ENDPOINT) {
   try {
     const response = await fetch(endpoint, {
       method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload)
     });
-
+    console.log(response)
     if (!response.ok) throw new Error(`[DELETE] ${endpoint} failed: ${response.statusText}`);
     return await response;
   } catch (error) {
@@ -63,7 +67,7 @@ export async function applyConfig(payload= {}, delay = -1, endpoint = PROXY_ENDP
 {
   // delete previous config if there's any
   try {
-    deleteShape(endpoint);
+    deleteShape(payload, endpoint);
   }
   finally 
   {
@@ -77,7 +81,7 @@ export async function applyConfig(payload= {}, delay = -1, endpoint = PROXY_ENDP
       // if delay > 0 then create timer to reset config to normal
       setTimeout(async () => {
         try {
-          await deleteShape(endpoint);
+          await deleteShape(payload, endpoint);
         } catch (delErr) {
           console.error('[DELETE] ', delErr.message);
         }
