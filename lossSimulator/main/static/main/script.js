@@ -59,7 +59,7 @@ export async function getShape(endpoint = PROXY_ENDPOINT, ip = "") {
 }
 
 
-export async function applyConfig(payload= {}, delay = -1, endpoint = PROXY_ENDPOINT)
+export async function applyConfig(payload= {}, endpoint = PROXY_ENDPOINT)
 {
   // delete previous config if there's any
   try {
@@ -69,20 +69,7 @@ export async function applyConfig(payload= {}, delay = -1, endpoint = PROXY_ENDP
   {
     try {
       const res = await postShape(payload, endpoint);
-      // if post success
-      if (delay <= 0)
-      {
-        return;
-      }
-      // if delay > 0 then create timer to reset config to normal
-      setTimeout(async () => {
-        try {
-          await deleteShape(payload, endpoint);
-        } catch (delErr) {
-          console.error('[DELETE] ', delErr.message);
-        }
-      }, delay);
-      return;
+      return res;
     } 
     catch (err)
     {

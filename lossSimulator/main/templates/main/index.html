@@ -21,12 +21,18 @@
                 </div>
                 <div class="col bg-light border">
                 <pre>
-1. (Optional) Set time to apply config -> If not, The config will just stop when you delete it
+1. (Optional) 
+    1.1 Set time to apply config -> If not, The config will just stop when you delete it
+
+    1.2 Toggle monitor button to get active/unactive shape config
+
 2. Select device IP you want to apply config
+
 3. Choose option to apply:
     3.1 Default Config JSON:
             + Defined JSON config for different network configuration
             + Can edit option to apply your own config
+
     3.2 Defined Loss Strategies (based on Mr.Tien (tiend3) 's strategies):
             + Fix90: Fixed 90% packet loss rate
             + Dynamic: Loss rate varies over time (each ... second)
@@ -52,8 +58,9 @@
                             {% endfor %}
                         </select>
                     </div>
-                    <div class="col d-flex align-items-center justify-content-center">
+                    <div class="col d-flex flex-column align-items-center justify-content-center gap-3">
                         <button type="button" id="fetchIPBtn">Reload</button>
+                        <button type="button" id="deleteBtn">Delete Config</button>
                     </div>
     
                 </div>
@@ -61,9 +68,17 @@
 
             <div class="col ip-monitor">
                 <div class="title"><span>Monitor</span></div>
-
-                <div class="row d-flex justify-content-center align-items-center gap-3 p-2">
-                    <ul id="activeShapeList" class="list-unstyled d-flex flex-column justify-content-center gap-3"></ul>
+                
+                <div class="row d-flex">
+                    <div class="col d-flex justify-content-center align-items-center gap-3 p-2">
+                        <button id="monitorToggleBtn" class="btn bg-danger text-white">
+                            OFF
+                        </button>
+                    </div>
+    
+                    <div class="col d-flex justify-content-center align-items-center gap-3 p-2">
+                        <ul id="activeShapeList" class="list-unstyled d-flex flex-column justify-content-center gap-3"></ul>
+                    </div>
                 </div>
             </div>
         </div>
@@ -87,7 +102,7 @@
                     <span>Default Config JSON</span>
                 </div>
     
-                    <div class="config-row">
+                    <div class="row d-flex align-items-center gap-3">
                         <label for="jsonFiles">Choose a config:</label>
                         <select id="jsonFiles" name="jsonFiles">
                             <option value="" selected>-- Select a config --</option>
@@ -98,21 +113,43 @@
                     </div>
     
                     <div id="editor">
-                        <form id="jsonForm" method="post">
-    
+                        <form id="jsonForm" method="post" class="row d-flex flex-column gap-3 p-2">
                             {% csrf_token %}
                             <textarea id="json-editor" name="json_data">{{ json_content }}</textarea>
-                            <br>
-    
-                            <br>
-                            <button type="submit" id="applyBtn">Apply</button>
-                            <button type="button" id="deleteBtn">Delete</button>
+                            <button type="submit" id="applyDefaultBtn">Apply</button>
                         </form>
                     </div>
             </div>
     
             <div class="col defined-loss-strategy d-flex flex-column align-items-center gap-3 p-2">
                 <div class="title">Defined Loss Strategies</div>
+                <form id="strategyForm" method="post" class="row d-flex flex-column gap-3 p-2">
+                            {% csrf_token %}
+                            <label for="strategies">Choose a strategy:</label>
+                            <select id="strategies" name="strategies">
+                                <option value="" selected>-- Select a strategy --</option>
+                                {% for strategy in strategies %}
+                                <option value="{{ strategy }}">{{ strategy|cut:".json" }}</option>
+                                {% endfor %}
+                            </select>
+                            <div id="stratContainer" class="d-none">
+                                <div id="lossValue" class="d-flex flex-column">
+                                    <div class="col d-flex justify-content-center align-items-center">
+                                        <span>Loss Percentage: </span>
+                                        <input id="lossValueInput" type="number" value="" readonly disabled>
+                                        <span>%</span>
+                                    </div>
+                                    <div class="col d-flex justify-content-center align-items-center">
+                                        <span>Change every </span>
+                                        <input type="number" id="cycleSeconds" min="0" value="5" style="width:60px">
+                                        <span>s</span>
+                                    </div>
+                                </div>
+                                <button type="submit" id="applyStrategyBtn" disabled>Apply</button>
+                            </div>
+                        </form>
+                    
+                </div>
             </div>
         </div>
     </div>
@@ -123,8 +160,8 @@
 <script type="module">
     import { 
         fetchJson, 
-        applyConfig, 
-        postShape, 
+        applyConfig,
+        postShape,
         deleteShape, 
         convertTimerToMs,
         fetchIp,
@@ -139,17 +176,30 @@
                         theme: "dracula",
                         lineNumbers: true,
                     });
-    const selectEl = document.getElementById("jsonFiles");
-    const form = document.getElementById('jsonForm');
+    const defaultConfigSelector = document.getElementById("jsonFiles");
+    const strategySelector = document.getElementById("strategies");
+    const jsonForm = document.getElementById('jsonForm');
+    const strategyForm = document.getElementById('strategyForm');
     const deleteBtn = document.getElementById("deleteBtn");
-    const applyBtn = document.getElementById("applyBtn");
+    const applyDefaultBtn = document.getElementById("applyDefaultBtn");
     const fetchIpBtn = document.getElementById("fetchIPBtn");
     const hour = document.getElementById("hours");
     const minute = document.getElementById("minutes");
     const second = document.getElementById("seconds");
     const activeShapeList = document.getElementById("activeShapeList");
     const ipSelector = document.getElementById("ipAddresses");
+    const monitorBtn = document.getElementById("monitorToggleBtn");
+    const stratDiv = document.getElementById("stratContainer");
+    const lossValueDiv = document.getElementById("lossValue");
+    const applyStratBtn = document.getElementById("applyStrategyBtn");
+    const lossValueInput = document.getElementById("lossValueInput");
+    const cycleSecondsInput = document.getElementById("cycleSeconds");
+
+    // variables
+    var previousIp = "";
     let countDownInterval = null;
+    let monitoringInterval = null;
+    let cycleInterval = null;
 
     // functions
     function setTimerValue(value)
@@ -169,17 +219,32 @@
         }
     }
 
-    function resetTimer()
+    async function resetTimer()
     {
         if (countDownInterval) clearInterval(countDownInterval);
-        countDownInterval = null;
-        hour.value = 0;
-        minute.value = 0;
-        second.value = 0;
+        if (cycleInterval) clearInterval(cycleInterval);
+        try{
+            await deleteShape({
+                "ip": previousIp
+            });
+        }
+        finally
+        {
+            countDownInterval = null;
+            hour.value = 0;
+            minute.value = 0;
+            second.value = 0;
+
+            isAppliedJsonConf(false);
+            isAppliedStratConf(false);
+            previousIp = "";
+            alert("[TIMER] DELETED CONFIG");
+        }
     }
 
     function countDown(timeLeft)
     {
+        if (timeLeft <= 0) return;
         if (countDownInterval) clearInterval(countDownInterval);
 
         countDownInterval = setInterval(() => {
@@ -189,25 +254,37 @@
 
             if (timeLeft <= 0) {
                 resetTimer();
-                isAppliedConf(false);
-                alert("[TIMER] DELETED CONFIG");
             }
         }, 1000);
     }
 
-    function isAppliedConf(val)
+    function isAppliedJsonConf(val)
     {
         if (val)
         {
-            applyBtn.textContent = "Applied"
-            applyBtn.style.backgroundColor = "green";
-            applyBtn.style.color = "white";    
+            applyDefaultBtn.textContent = "Applied"
+            applyDefaultBtn.style.backgroundColor = "green";
+            applyDefaultBtn.style.color = "white";    
             return;
         }
 
-        applyBtn.textContent = "Apply"
-        applyBtn.style.backgroundColor = "buttonface";
-        applyBtn.style.color = "buttontext";
+        applyDefaultBtn.textContent = "Apply"
+        applyDefaultBtn.style.backgroundColor = "buttonface";
+        applyDefaultBtn.style.color = "buttontext";
+
+    }
+
+    function isAppliedStratConf(val)
+    {
+        if (val)
+        {
+            stratDiv.className = "d-flex flex-column align-items-center gap-3";
+            applyStratBtn.disabled = false;
+            return;
+        }
+
+        stratDiv.className = "d-none";
+        applyStratBtn.disabled = false;
 
     }
 
@@ -227,17 +304,30 @@
             return;
         }
     }
+
+    async function removePreviousConfig() {
+        if (previousIp !== "")
+        {
+            try {
+                deleteShape({
+                    "ip": previousIp
+                });
+                await sleep(500);  
+            }
+            catch
+            {
+                // do nothing
+            }
+        }
+    }
     // end functions
 
     // first load 
     editorContainer.style.display = "none";
-    getActiveShape();
-    setInterval(getActiveShape, MONITORING_INTERVAL);
-
 
 
     // on change option value
-    selectEl.addEventListener("change", async (event) => {
+    defaultConfigSelector.addEventListener("change", async (event) => {
         const selectedValue = event.target.value;
         if (!selectedValue || selectedValue.length <= 0)
         {
@@ -263,9 +353,11 @@
         }
     });
 
-    // form on submit
-    form.addEventListener('submit', async (e) => {
+    // jsonForm on submit
+    jsonForm.addEventListener('submit', async (e) => {
         e.preventDefault();
+        removePreviousConfig();
+        
         let jsonData = {};
         try 
         {
@@ -283,35 +375,20 @@
             const s = parseInt(second.value, 0);
             
             const timerValue = convertTimerToMs(h,m,s);
-            
-            // if timer is set
-            if (timerValue > 0)
-            {
-                try {
-                    await applyConfig(jsonData, timerValue);
-                    isAppliedConf(true)
-                    countDown(timerValue);
-                }
-                catch (e)
-                {
-                    alert("Error " + e);
-                }
-                return;
-            }
-            
-            // else just applied without time-limit
             try 
             {
-                const res = await postShape(jsonData);
-                alert("[POST] success")
-                isAppliedConf(true);
+                await applyConfig(jsonData);
+                isAppliedJsonConf(true)
+                countDown(timerValue);
+                previousIp = ipSelector.value;
+                strategySelector.value = "";
             }
-            catch (err)
+            catch (e)
             {
-                alert(err)
-                isAppliedConf(false);
+                isAppliedJsonConf(false)
+                previousIp = "";
+                alert("Error " + e);
             }
-            
         }
     });
 
@@ -326,7 +403,7 @@
             });
             if (!res.ok) throw new Error(res.status);
             alert("Deleted successfully!");
-            isAppliedConf(false);
+            isAppliedJsonConf(false);
             resetTimer();
         } 
         catch (err) 
@@ -360,6 +437,101 @@
         }
     });
 
+    // Monitor btn on click handler 
+    monitorBtn.addEventListener("click", async () => {
+        if (monitorBtn.classList.contains("bg-danger"))
+        {
+            monitorBtn.textContent = "ON";
+            monitorBtn.className = "btn bg-success text-white";
+            getActiveShape();
+            monitoringInterval = setInterval(getActiveShape, MONITORING_INTERVAL);
+            return;
+        }
 
+        // else
+        monitorBtn.textContent = "OFF";
+        monitorBtn.className = "btn bg-danger text-white";
+        if (monitoringInterval) clearInterval(monitoringInterval);
+        monitoringInterval = null;
+        activeShapeList.innerHTML = "";
+    });
+
+    // strategySelector on change handler
+    strategySelector.addEventListener("change", async (event) => {
+        event.preventDefault();
+        if (strategySelector.value.length > 0)
+        {
+            isAppliedStratConf(true);
+            if (!strategySelector.value.startsWith("fix"))
+            {
+                lossValueDiv.className = "d-flex flex-column align-items-center gap-2";
+            }
+            else
+            {
+                lossValueDiv.className = "d-none";
+            }
+            return;
+        }
+        isAppliedStratConf(false);
+    });
+
+
+    // strategyForm on submit
+    strategyForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        removePreviousConfig();
+        
+        let jsonData = {};
+        try 
+        {
+            jsonData.strategy = strategySelector.value;
+            jsonData.ip = ipSelector.value;
+        } catch (err) 
+        {
+            alert('Invalid JSON: ' + err.message);
+            return;
+        }
+        finally
+        {
+            const h = parseInt(hour.value, 0);
+            const m = parseInt(minute.value, 0);
+            const s = parseInt(second.value, 0);
+            
+            const timerValue = convertTimerToMs(h,m,s);
+            try {
+                const resp = await applyConfig(jsonData);
+                countDown(timerValue);
+                previousIp = ipSelector.value;
+                defaultConfigSelector.value = "";
+                lossValueInput.value = resp.loss;
+
+                // start Cycle Interval
+                if (cycleInterval) clearInterval(cycleInterval);
+                if (!strategySelector.value.startsWith("fix") && cycleSecondsInput.value > 0)
+                {
+                    cycleInterval = setInterval(async () => {
+                        try {
+                            const resp = await postShape(jsonData);
+                            lossValueInput.value = resp.loss;
+                            defaultConfigSelector.value = "";
+                        }
+                        catch (e)
+                        {
+                            if (cycleInterval) clearInterval(cycleInterval);
+                            cycleInterval = null;
+                            lossValueInput.value = "";
+                            alert("Error " + e);
+                        }
+                    }, cycleSecondsInput.value * 1000); 
+                }
+            }
+            catch (e)
+            {
+                previousIp = "";
+                alert("Error " + e);
+                return;
+            }
+        }
+    });
 </script>
 </html>

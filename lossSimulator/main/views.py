@@ -8,6 +8,7 @@ def index(request):
     context = {
         "name": NetworkUtils.getIpString(request),
         "files": FileUtils.listAllJsonFiles(),
+        "strategies": FileUtils.listAllLossStrategyFiles()
     }
     
     return render(request, "main/index.html", context)
