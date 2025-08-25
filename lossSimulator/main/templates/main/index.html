@@ -35,7 +35,6 @@
     {% if name ==  "Stranger" %}
         <h2>You don't have any permission, please call for help</h2>
     {% else %}
-        
         <div class="column-grid ip-selector">
             <div class="title"><span>IP Selector</span></div>
             
@@ -97,9 +96,8 @@
             <div class="title">Defined Loss Strategies</div>
 
         </div>
-    {% endif %}
     </div>
-
+    {% endif %}
 
 </body>
 
@@ -225,10 +223,11 @@
     // form on submit
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
-        let jsonData;
+        let jsonData = {};
         try 
         {
-            jsonData = JSON.parse(editor.getValue());
+            jsonData.data = JSON.parse(editor.getValue());
+            jsonData.ip = ipSelector.value;
         } catch (err) 
         {
             alert('Invalid JSON: ' + err.message);
@@ -279,7 +278,9 @@
 
         try 
         {
-            const res = await deleteShape();
+            const res = await deleteShape({
+                "ip": ipSelector.value
+            });
             if (!res.ok) throw new Error(res.status);
             alert("Deleted successfully!");
             isAppliedConf(false);
