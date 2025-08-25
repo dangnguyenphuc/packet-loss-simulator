@@ -74,6 +74,35 @@ class RequestUtils:
     @staticmethod
     def atcRequest(request: HttpRequest) -> JsonResponse:
 
+        if request.method == "GET":
+            ip = request.GET.get("ip", "")
+            data = []
+            if ip == "":
+                for ipLoop in NetworkUtils.scanNetwork():
+                    tmp = {}
+                    endpoint = CONST.NETWORK_ATC_GATEWAY_IP + CONST.NETWORK_ATC_ENDPOINT + ipLoop + "/"
+                    try:
+                        response = requests.get(endpoint)
+                        tmp = {
+                            "ip": ipLoop, 
+                            "active": (response.status_code//200 == 1)
+                        }
+                    except:
+                        tmp = {
+                            "ip": ipLoop, 
+                            "active": False
+                        }
+                    data.append(tmp)
+            else:
+                endpoint = CONST.NETWORK_ATC_GATEWAY_IP + CONST.NETWORK_ATC_ENDPOINT + ip + "/"
+                try:
+                    response = requests.get(endpoint)
+                    if response.status_code//200 == 1:
+                        data.append(ipLoop)
+                except:
+                    pass
+            return JsonResponse({"data": data})        
+
         try :
             requestData = json.loads(request.body.decode("utf-8"))
         except (UnicodeDecodeError, JSONDecodeError) as e:

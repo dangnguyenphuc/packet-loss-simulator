@@ -7,53 +7,70 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/dracula.min.css">
     <link rel="stylesheet" href="{% static 'main/style.css' %}">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js"></script>
 </head>
 <body>
     <h1>Hello, {{ name }}!</h1>
         
-    <div class="main-container">
-        <div class="column-grid intro">
-            <div class="title">
-                <span>How to use</span>
-            </div>
-<textarea class="intro-text" disabled>
+    <div class="d-flex flex-column gap-3">
+        <div class="row d-flex flex-md-row flex-column intro">
+                <div class="col-md-3 col-12 d-flex title align-items-center justify-content-center">
+                    <span>How to use</span>
+                </div>
+                <div class="col bg-light border">
+                <pre>
 1. (Optional) Set time to apply config -> If not, The config will just stop when you delete it
 2. Select device IP you want to apply config
 3. Choose option to apply:
-    2.1 Default Config JSON:
+    3.1 Default Config JSON:
             + Defined JSON config for different network configuration
             + Can edit option to apply your own config
-    2.2 Defined Loss Strategies (based on Mr.Tien(tiend3)'s strategies):
+    3.2 Defined Loss Strategies (based on Mr.Tien (tiend3) 's strategies):
             + Fix90: Fixed 90% packet loss rate
             + Dynamic: Loss rate varies over time (each ... second)
-            + IncreaseOnly: Same as Dynamic but loss rate always increase
-</textarea>
-        </div>
+            + IncreaseOnly: Same as Dynamic but loss rate always increase</pre>
+                </div>
+            </div>
         
     {% if name ==  "Stranger" %}
         <h2>You don't have any permission, please call for help</h2>
     {% else %}
-        <div class="column-grid ip-selector">
-            <div class="title"><span>IP Selector</span></div>
-            
-            <div class="ip-selector-row">
-                <label for="ipAddresses">Choose an IP:</label>
-                <select id="ipAddresses" name="ipAddresses">
-                    <option value="{{ name }}" selected>{{ name }}</option>
-                    {% for device in devices %}
-                    <option value="{{ device }}">{{ device }}</option>
-                    {% endfor %}
-                </select>
+        <div class="row d-flex flex-row">
+            <div class="col ip-selector">
 
-                <button type="button" id="fetchIPBtn">Reload</button>
+                <div class="title"><span>IP Selector</span></div>
+                
+                <div class="row d-flex flex-row gap-3 p-2">
+                    <div class="col d-flex align-items-center gap-3">
+                        <label for="ipAddresses">Choose an IP:</label>
+                        <select id="ipAddresses" name="ipAddresses">
+                            <option value="{{ name }}" selected>{{ name }}</option>
+                            {% for device in devices %}
+                            <option value="{{ device }}">{{ device }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col d-flex align-items-center justify-content-center">
+                        <button type="button" id="fetchIPBtn">Reload</button>
+                    </div>
+    
+                </div>
+            </div>
+
+            <div class="col ip-monitor">
+                <div class="title"><span>Monitor</span></div>
+
+                <div class="row d-flex justify-content-center align-items-center gap-3 p-2">
+                    <ul id="activeShapeList" class="list-unstyled d-flex flex-column justify-content-center gap-3"></ul>
+                </div>
             </div>
         </div>
 
-        <div class="column-grid timer-container">
+        <div class="row d-flex flex-column timer-container p-2">
             <div class="title"><span>Timer</span></div>
-            <div id="timer">
+            <div id="timer" class="d-flex align-items-center justify-content-center gap-3">
                 <label>Time to apply config:</label>
                 <input type="number" id="hours" min="0" value="0" style="width:60px">
                 <span>:</span>
@@ -63,38 +80,40 @@
             </div>
         </div>
 
-        <div class="column-grid default-config-json">
-            <div class="title">
-                <span>Default Config JSON</span>
+        <div class="row d-flex flex-md-row flex-column config-container">
+            
+            <div class="col default-config-json d-flex flex-column align-items-center gap-3 p-2">
+                <div class="title">
+                    <span>Default Config JSON</span>
+                </div>
+    
+                    <div class="config-row">
+                        <label for="jsonFiles">Choose a config:</label>
+                        <select id="jsonFiles" name="jsonFiles">
+                            <option value="" selected>-- Select a config --</option>
+                            {% for file in files %}
+                            <option value="{{ file }}">{{ file|cut:".json" }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+    
+                    <div id="editor">
+                        <form id="jsonForm" method="post">
+    
+                            {% csrf_token %}
+                            <textarea id="json-editor" name="json_data">{{ json_content }}</textarea>
+                            <br>
+    
+                            <br>
+                            <button type="submit" id="applyBtn">Apply</button>
+                            <button type="button" id="deleteBtn">Delete</button>
+                        </form>
+                    </div>
             </div>
-
-                <div class="config-row">
-                    <label for="jsonFiles">Choose a config:</label>
-                    <select id="jsonFiles" name="jsonFiles">
-                        <option value="" selected>-- Select a config --</option>
-                        {% for file in files %}
-                        <option value="{{ file }}">{{ file|cut:".json" }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-
-                <div id="editor">
-                    <form id="jsonForm" method="post">
-
-                        {% csrf_token %}
-                        <textarea id="json-editor" name="json_data">{{ json_content }}</textarea>
-                        <br>
-
-                        <br>
-                        <button type="submit" id="applyBtn">Apply</button>
-                        <button type="button" id="deleteBtn">Delete</button>
-                    </form>
-                </div>
-        </div>
-
-        <div class="column-grid defined-loss-strategy">
-            <div class="title">Defined Loss Strategies</div>
-
+    
+            <div class="col defined-loss-strategy d-flex flex-column align-items-center gap-3 p-2">
+                <div class="title">Defined Loss Strategies</div>
+            </div>
         </div>
     </div>
     {% endif %}
@@ -108,7 +127,9 @@
         postShape, 
         deleteShape, 
         convertTimerToMs,
-        fetchIp
+        fetchIp,
+        getShape,
+        MONITORING_INTERVAL
     } from "{% static 'main/script.js' %}";
     
     // select DOM Objects
@@ -126,6 +147,7 @@
     const hour = document.getElementById("hours");
     const minute = document.getElementById("minutes");
     const second = document.getElementById("seconds");
+    const activeShapeList = document.getElementById("activeShapeList");
     const ipSelector = document.getElementById("ipAddresses");
     let countDownInterval = null;
 
@@ -188,10 +210,31 @@
         applyBtn.style.color = "buttontext";
 
     }
+
+    async function getActiveShape() {
+        try {
+            const res = (await getShape()).data;
+            activeShapeList.innerHTML = "";
+            res.forEach(data => {
+                const isActive = data.active;
+                const li = document.createElement("li");
+                li.className = (isActive ? "bg-success" : "bg-danger") + " text-white"
+                li.textContent = data.ip + (isActive ? "(active)" : "(inactive)");
+                activeShapeList.appendChild(li);
+            })
+        }
+        finally {
+            return;
+        }
+    }
     // end functions
 
     // first load 
     editorContainer.style.display = "none";
+    getActiveShape();
+    setInterval(getActiveShape, MONITORING_INTERVAL);
+
+
 
     // on change option value
     selectEl.addEventListener("change", async (event) => {
@@ -293,6 +336,7 @@
         }
     });
 
+    // reload ip btn on click handler
     fetchIpBtn.addEventListener("click", async () => {
         ipSelector.disabled = true;
         try{
@@ -315,5 +359,7 @@
             ipSelector.disabled=false;
         }
     });
+
+
 </script>
 </html>
