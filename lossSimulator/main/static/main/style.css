@@ -14,32 +14,12 @@
     background-color: rgb(255, 143, 165);
 }
 
-.ip-selector-row {
-    display: flex;
-    flex-direction: row;
-    gap: 10px;
+.ip-monitor {
+    background-color: rgb(252, 188, 220);
 }
 
-.intro-text{
-    width: 100%;
-    height: auto;
-    min-height: 150px;
-    resize: none;
-    overflow: hidden;
-}
-
-.main-container {
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
-}
-
-.column-grid {
-    display: flex;
-    flex-direction: column;
-    row-gap: 10px;
-    padding: 20px;
-    justify-items: center;
+.config-container {
+    background-color: rgb(243, 237, 205);
 }
 
 .default-config-json {

@@ -1,8 +1,8 @@
 const PROXY_ENDPOINT = '/api/proxy/shape'
+export const MONITORING_INTERVAL = 10000; // in ms
 
 export async function fetchIp()
 {
-  try {
     const response = await fetch(`/api/ip`);
 
     if (!response.ok) {
@@ -10,13 +10,9 @@ export async function fetchIp()
     }
 
     return await response.json();
-  } catch (error) {
-    throw new Error(`[GET] Error loading: ${error.message}`);
-  }
 }
 
 export async function fetchJson(filename) {
-  try {
     const response = await fetch(`/api/json/${filename}`);
 
     if (!response.ok) {
@@ -24,13 +20,9 @@ export async function fetchJson(filename) {
     }
 
     return await response.json();
-  } catch (error) {
-    throw new Error(`[GET] Error loading ${filename}: ${error.message}`);
-  }
 }
 
 export async function deleteShape(payload, endpoint = PROXY_ENDPOINT) {
-  try {
     const response = await fetch(endpoint, {
       method: 'DELETE',
       headers: {
@@ -38,16 +30,12 @@ export async function deleteShape(payload, endpoint = PROXY_ENDPOINT) {
       },
       body: JSON.stringify(payload)
     });
-    console.log(response)
+
     if (!response.ok) throw new Error(`[DELETE] ${endpoint} failed: ${response.statusText}`);
     return await response;
-  } catch (error) {
-    throw new Error(`[DELETE] Error deleting ${endpoint}: ${error.message}`);
-  }
 }
 
 export async function postShape(payload={}, endpoint = PROXY_ENDPOINT) {
-  try {
     const response = await fetch(endpoint, {
       method: 'POST',
       headers: {
@@ -58,10 +46,18 @@ export async function postShape(payload={}, endpoint = PROXY_ENDPOINT) {
 
     if (!response.ok) throw new Error(`[POST] ${endpoint} failed: ${response.statusText}`);
     return await response.json();
-  } catch (error) {
-    throw new Error(`[POST] Error posting to ${endpoint}: ${error.message}`);
-  }
 }
+
+export async function getShape(endpoint = PROXY_ENDPOINT, ip = "") {
+    const url = ip !== "" ? `${endpoint}?ip=${ip}` : endpoint;
+    const response = await fetch(endpoint, {
+      method: 'GET',
+    });
+
+    if (!response.ok) throw new Error(`[GET] ${endpoint} failed: ${response.statusText} with error ${response.body.error}`);
+    return await response.json();
+}
+
 
 export async function applyConfig(payload= {}, delay = -1, endpoint = PROXY_ENDPOINT)
 {
