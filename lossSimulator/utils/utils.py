@@ -6,6 +6,8 @@ from json.decoder import JSONDecodeError
 import requests
 from .constants import CONST
 import nmap
+import random
+import shutil
 
 class NetworkUtils:
     def getIp(request: HttpRequest) -> str:
@@ -47,6 +49,21 @@ class FileUtils:
 
         return ""
 
+    @staticmethod
+    def saveJsonFile(data, filePath: str, folderPath: str = CONST.JSON_CONFIG_FOLDER) -> bool:
+        try:
+            with open(os.path.join(folderPath, filePath), "w") as f:
+                json.dump(data, f, indent=4)
+                return True
+        except json.JSONDecodeError as e:
+            print("Invalid JSON format:", e)
+        except FileNotFoundError:
+            print("File not found")
+        except Exception as e:
+            print("Unexpected error:", e)
+
+        return False
+    
     def listFile(folderPath: str, type: str = "*") -> list[str]:
         if (type == "*"):
             return os.listdir(folderPath)
@@ -54,9 +71,23 @@ class FileUtils:
         else: return [file for file in os.listdir(folderPath) if file.endswith(type)]
     
     @staticmethod
+    def copyFile(src: str, dst: str) -> bool:
+        try:
+            shutil.copy2(src, dst)
+            return True
+        except Exception as e:
+            print(f"Failed to copy {src} -> {dst}: {e}")
+            return False
+
+    @staticmethod
     def listAllJsonFiles(folderPath: str = CONST.JSON_CONFIG_FOLDER) -> list[str]:
         res = FileUtils.listFile(folderPath, type="json")
         res.sort()
+        return res
+
+    @staticmethod
+    def listAllLossStrategyFiles(folderPath: str = CONST.LOSS_STRATEGIES_FOLDER) -> dict[str, int]:
+        res = FileUtils.listFile(folderPath, type="json")
         return res
 
     @staticmethod
@@ -125,6 +156,63 @@ class RequestUtils:
         endpoint = CONST.NETWORK_ATC_GATEWAY_IP + CONST.NETWORK_ATC_ENDPOINT + requestData['ip'] + "/"
 
         if request.method == 'POST':
+            if 'strategy' in requestData:
+                strate = requestData['strategy']
+                if not strate in FileUtils.listAllLossStrategyFiles():
+                    return JsonResponse(
+                        {
+                            "error": f"Invalid strategy '{strate}'"
+                        },
+                        status=400
+                    )
+
+                shapeData = FileUtils.getJsonContent(strate, CONST.LOSS_STRATEGIES_FOLDER)
+                curLoss = shapeData["down"]["loss"]["percentage"]
+                loss = random.randint(0,100)
+                
+                match strate.split(".")[0]:
+                    case "fix90":
+                        loss = 90
+                    case "dynamic":
+                        shapeData["down"]["loss"]["percentage"] = loss
+                    case "increaseOnly":
+                        if loss >= curLoss:
+                            shapeData["down"]["loss"]["percentage"] = loss
+                            FileUtils.saveJsonFile(shapeData, strate, CONST.LOSS_STRATEGIES_FOLDER)
+                    case _:
+                        return JsonResponse({
+                            "error": f"Strategy '{strate}' is not implemented"
+                        }, status=400)
+                
+                try:
+                    response = requests.post(
+                        endpoint,
+                        headers={"Content-Type": "application/json"},
+                        json=shapeData
+                    )
+
+                    if strate.startswith("increase"):
+                        return JsonResponse(
+                            {
+                                "status": response.status_code,
+                                "loss": loss if loss >= curLoss else curLoss
+                            },
+                            status=response.status_code
+                        )
+
+                    return JsonResponse(
+                        {
+                            "status": response.status_code,
+                            "loss": loss
+                        },
+                        status=response.status_code
+                    )
+                except Exception as e:
+                    return JsonResponse({"error": str(e)}, status=500)
+
+
+
+
             if 'data' not in requestData:
                 return JsonResponse(
                     {
@@ -153,6 +241,13 @@ class RequestUtils:
                 return JsonResponse({"error": str(e)}, status=500)
 
         elif request.method == 'DELETE':
+            
+            # reset increaseOnly no matter what
+            FileUtils.copyFile(
+                os.path.join(CONST.LOSS_STRATEGIES_FOLDER, "dynamic.json"),
+                os.path.join(CONST.LOSS_STRATEGIES_FOLDER, "increaseOnly.json")
+            )
+
             try:
                 response = requests.delete(
                     endpoint
