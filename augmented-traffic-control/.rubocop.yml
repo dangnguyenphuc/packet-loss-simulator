@@ -1,0 +1,7 @@
+AllCops:
+    Exclude:
+        - '**/Berksfile'
+        - '**/Vagrantfile'
+        - '**/metadata.rb'
+Style/HashSyntax:
+    Enabled: false

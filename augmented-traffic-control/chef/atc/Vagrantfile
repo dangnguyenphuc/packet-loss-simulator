@@ -1,0 +1,67 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+boxes = [
+    {
+        :name => :precise,
+        :box    => 'bento/ubuntu-12.04',
+        :chef_version => :latest,
+    },
+    {
+        :name => :centos6,
+        :box    => 'bento/centos-6.6',
+        :chef_version => :latest,
+        :python_from_source => true,
+    },
+    {
+        :name => :trusty,
+        :box    => 'bento/ubuntu-14.04',
+        :chef_version => :latest,
+    },
+]
+
+# Vagrantfile API/syntax version. Don't touch unless you know what you're doing!
+VAGRANTFILE_API_VERSION = "2"
+
+Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
+    boxes.each do |opts|
+        config.vm.define opts[:name] do |box|
+            box.vm.box = opts[:box]
+            box.vm.synced_folder '../..', '/usr/local/src/atc'
+            # Chef install
+            box.omnibus.chef_version = opts.fetch(:chef_version, :latest)
+            # hostname
+            box.vm.hostname = opts[:name].to_s
+            # Berks
+            box.berkshelf.enabled = true
+            box.vm.provision :chef_solo do |chef|
+                chef.run_list = [
+                    "recipe[atc::default]"
+                ]
+                if opts.fetch(:python_from_source, false)
+                    chef.json = {
+                        "python" => {
+                          "install_method" => "source",
+                          "distribute_install_py_version" => "2.7",
+                        }
+                    }
+                end
+                chef.json.update(
+                  {
+                    "atc" => {
+                      "atcd" => {
+                        "mode" => "unsecure"
+                      }
+                    }
+                  }
+                )
+            end
+            # port forwarding
+            box.vm.network :forwarded_port, guest: 8000, host: 8080, auto_correct: true
+            # extra interface
+            box.vm.network :private_network, ip: opts.fetch(:priv_network, '100.64.33.3')
+            box.vm.provider "virtualbox" do |v|
+                v.customize ["modifyvm", :id, "--usbehci", opts.fetch(:usbehci, "on")]
+            end
+        end
+    end
+end

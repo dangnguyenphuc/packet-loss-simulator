@@ -8,6 +8,7 @@ from .constants import CONST
 import nmap
 import random
 import shutil
+import subprocess
 
 class NetworkUtils:
     def getIp(request: HttpRequest) -> str:
@@ -266,3 +267,49 @@ class RequestUtils:
                 {"error": "You do not have permission to access this resource."},
                 status=403
             ) 
+        
+class ADBUtils:
+
+    '''
+    return list of 
+        {
+            "id": "...",
+            "name": "..."
+        }
+    
+    '''
+    @staticmethod
+    def getConnectedDevices():
+        try:
+            cmd = subprocess.run(
+                ["adb", "devices"],
+                capture_output=True,
+                text=True,
+                check=True
+            )
+            lines = cmd.stdout.strip().split("\n")[1:]  # skip "List of devices attached"
+            devices = [line.split()[0] for line in lines if line.strip() and "device" in line]
+            returnVal = []
+            for device in devices:
+                try: 
+                    manufacturer = subprocess.run(
+                        ["adb", "-s", device, "shell", "getprop", "ro.product.manufacturer"],
+                        capture_output=True,
+                        text=True,
+                        check=True
+                    ).stdout.strip()
+                    model = subprocess.run(
+                        ["adb", "-s", device, "shell", "getprop", "ro.product.model"],
+                        capture_output=True,
+                        text=True,
+                        check=True
+                    ).stdout.strip()
+                    returnVal.append({"id": device, "name": manufacturer + " " + model})
+                except subprocess.CalledProcessError as e:
+                    print("Error running adb:", e)        
+                    returnVal.append({"id": device, "name": ""})
+                    
+            return returnVal
+        except subprocess.CalledProcessError as e:
+            print("Error running adb:", e)
+            return []

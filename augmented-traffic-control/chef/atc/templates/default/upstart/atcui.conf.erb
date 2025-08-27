@@ -1,0 +1,35 @@
+# Augmented Traffic Control User Interface
+
+#author "Author Here"
+version "0.0.1"
+description "Augmented Traffic Control User Interface"
+
+start on (started networking)
+stop on (stopped networking)
+
+<% if node['atc']['atcui']['user'] != 'root' %>
+setuid <%= node['atc']['atcui']['user'] %>
+<% end %>
+<% if node['atc']['atcui']['group'] != 'root' %>
+setgid <%= node['atc']['atcui']['group'] %>
+<% end %>
+chdir /var/django
+
+respawn
+respawn limit 2 1
+
+# Defaults
+# Can be overridden in /etc/default/atcui
+env ATCUI_LOG_FILE=/var/log/atc/atcui.log
+env ATCUI_LISTEN_ADDRESS=0.0.0.0
+env ATCUI_LISTEN_PORT=8000
+env ATCUI_WORKERS=2
+env ATCUI_VENV=/usr/local/atc/venv
+
+script
+    [ -f "/etc/default/atcui" ] && . /etc/default/atcui
+
+    [ -d "$ATCUI_VENV" ] && . "$ATCUI_VENV/bin/activate"
+
+    gunicorn -w $ATCUI_WORKERS --log-file="$ATCUI_LOG_FILE" -b "$ATCUI_LISTEN_ADDRESS:$ATCUI_LISTEN_PORT" atc_ui.wsgi:application
+end script
