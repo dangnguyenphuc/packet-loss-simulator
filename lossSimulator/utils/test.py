@@ -1,9 +1,13 @@
 import uiautomator2 as u2
 import subprocess
 from datetime import datetime
-import time
+
 
 DEFAULT_TIMEOUT = 5
+
+DESKTOP_STATIC_FOLDER = "../static/"
+AUDIO_FILE = "audio.wav"
+ANDROID_DEMO_PATH = "/demo"
 
 PACKAGE = "com.vng.zing.vn.zrtc.demo"
 APP_PACKAGE = f"{PACKAGE}.debug"
@@ -13,68 +17,119 @@ CALL_BTN_ID = f"{APP_PACKAGE}:id/button_call"
 
 # Login activity
 LOGIN_ACTIVITY = f"{PACKAGE}.LoginActivity"
+# call with section
 CALL_WITH_SELECTOR_ID = f"{APP_PACKAGE}:id/spinner_call_with_mode"
+# record folder section
 RECORD_CHECKBOX_ID = f"{APP_PACKAGE}:id/flag_record_audio"
 STORING_RECORD_PATH_EDIT_TEXT_ID = f"{APP_PACKAGE}:id/storing_path_record_text"
+# audio file section
+PLAY_AUDIO_CHECKBOX_ID = f"{APP_PACKAGE}:id/flag_play_audio"
+PLAY_AUDIO_FILE_EDIT_TEXT_ID = f"{APP_PACKAGE}:id/played_audio_file"
+# buttons section
 MAKE_AUDIO_CALL_BTN_ID = f"{APP_PACKAGE}:id/btn_make_audio_call"
 
-def getTimestamped():
-    return datetime.now().strftime("%d-%m-%Y_%H%M%S")
+# 'Call with' selections
+CALL_WITH_SELECTIONS = ["Server", "Loopback Local", "Loopback Server"]
 
+class DateTimeUtils:
+    
+    @staticmethod
+    def getTimestamped():
+        return datetime.now().strftime("%d-%m-%Y_%H%M%S")
 
-def getDownloadsPath(device_id=None):
-    candidates = [
-        "/sdcard/Download",
-        "/storage/emulated/0/Download",
-        "/mnt/sdcard/Download"
-    ]
-    for path in candidates:
+class AdbUtils:
+
+    @staticmethod
+    def pushFile(src, dest, deviceId=None):
+
         cmd = ["adb"]
-        if device_id:
-            cmd += ["-s", device_id]
-        cmd += ["shell", "ls", path]
+        if deviceId:
+            cmd += ["-s", deviceId]
+        cmd += ["push", src, dest]
+
+        try:
+            result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+            return True
+        except subprocess.CalledProcessError as e:
+            print(e.stderr)
+            return False
+    
+    @staticmethod
+    def isFileExists(path, deviceId = None):
+        cmd = ["adb"]
+        if deviceId:
+            cmd += ["-s", deviceId]
+        cmd += ["shell", f"test -f {path} && echo 1 || echo 0"]
+
         result = subprocess.run(cmd, capture_output=True, text=True)
-        if "No such file" not in result.stdout and "not found" not in result.stdout:
-            return path + "/demo"
-    return None
+        return result.stdout.strip() == "1"
 
-def createTmpDir(path, device_serial=None):
-    cmd = ["adb"]
-    if device_serial:
-        cmd += ["-s", device_serial]
-    cmd += ["shell", "mkdir", "-p", path]
+    @staticmethod
+    def isFolderExists(path, deviceId = None):
+        cmd = ["adb"]
+        if deviceId:
+            cmd += ["-s", deviceId]
+        cmd += ["shell", f"test -d {path} && echo 1 || echo 0"]
 
-    subprocess.run(cmd, check=True)
-    print(f"Created dir: {path} on device {device_serial or ''}")
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        return result.stdout.strip() == "1"
 
+    @staticmethod
+    def getDownloadsPath(deviceId = None):
+        candidates = [
+            "/storage/emulated/0/Download",
+            "/sdcard/Download",
+            "/mnt/sdcard/Download"
+        ]
+        for path in candidates:
+            cmd = ["adb"]
+            if deviceId:
+                cmd += ["-s", deviceId]
+            cmd += ["shell", "ls", path]
+            result = subprocess.run(cmd, capture_output=True, text=True)
+            if "No such file" not in result.stdout and "not found" not in result.stdout:
+                return path
+        return None
 
-def getConnectedDevices():
-    try:
-        cmd = subprocess.run(
-            ["adb", "devices"],
-            capture_output=True,
-            text=True,
-            check=True
-        )
-        lines = cmd.stdout.strip().split("\n")[1:]  # skip "List of devices attached"
-        return [line.split()[0] for line in lines if line.strip() and "device" in line]
-    except subprocess.CalledProcessError as e:
-        print("Error running adb:", e)
-        return []
+    @staticmethod
+    def createTmpDir(path, deviceId = None):
+        cmd = ["adb"]
+        if deviceId:
+            cmd += ["-s", deviceId]
+        cmd += ["shell", "mkdir", "-p", path]
+
+        subprocess.run(cmd, check=True)
+        print(f"Created dir: {path} on device {deviceId or ''}")
+
+    @staticmethod
+    def getConnectedDevices():
+        try:
+            cmd = subprocess.run(
+                ["adb", "devices"],
+                capture_output=True,
+                text=True,
+                check=True
+            )
+            lines = cmd.stdout.strip().split("\n")[1:]  # skip "List of devices attached"
+            return [line.split()[0] for line in lines if line.strip() and "device" in line]
+        except subprocess.CalledProcessError as e:
+            print("Error running adb:", e)
+            return []
 
 
 import uiautomator2 as u2
 
 class AndroidAppController:
-    def __init__(self, deviceId=None, packageName = APP_PACKAGE):
+    def __init__(self, deviceId=None, packageName = APP_PACKAGE, path = ANDROID_DEMO_PATH):
         if deviceId:
             self.d = u2.connect(deviceId)
         else:
             self.d = u2.connect()
         
         self.packageName = packageName
-        self.storePath = getDownloadsPath(self.d.serial) + "/" + getTimestamped()
-        createTmpDir(self.storePath, self.d.serial)
+        self.defaultPath = AdbUtils.getDownloadsPath(self.d.serial) + path
+        self.storePath = self.defaultPath + "/" + DateTimeUtils.getTimestamped()
+        AdbUtils.createTmpDir(self.storePath, self.d.serial)
         
 
     def startApp(self, packageName = None):
@@ -126,6 +181,7 @@ class AndroidAppController:
                 raise Exception(f"[ERROR] EditText {resourceId} not found")
             field.clear_text()
             field.set_text(str(value))
+            self.press("back")
         except Exception as e:
             raise e
     
@@ -158,12 +214,17 @@ class AndroidAppController:
         self.d.press(cmd)
 
 if __name__ == "__main__":
-    devices = getConnectedDevices()
+    devices = AdbUtils.getConnectedDevices()
     if len(devices) > 0:   
         print(devices)
         controller = AndroidAppController(deviceId=devices[0])
         controller.stopAll()
         controller.sleep(2)
+
+        # push audio file
+        deviceAudioFile = controller.defaultPath + "/" + AUDIO_FILE
+        AdbUtils.pushFile(DESKTOP_STATIC_FOLDER + AUDIO_FILE, deviceAudioFile)       
+
         controller.startApp()
         try:
             if controller.waitForActivity(DEMO_ACTIVITY):
@@ -172,15 +233,22 @@ if __name__ == "__main__":
                 if controller.waitForActivity(LOGIN_ACTIVITY):
                     # Loaded login page
                     controller.sleep(1)
-                    controller.setCheckbox(RECORD_CHECKBOX_ID, True)
-                    controller.selectSpinnerItem(CALL_WITH_SELECTOR_ID, "Server")
+                    controller.selectSpinnerItem(CALL_WITH_SELECTOR_ID, CALL_WITH_SELECTIONS[2])
                     controller.sleep(1)
-                    controller.setEditTextValue(STORING_RECORD_PATH_EDIT_TEXT_ID, controller.storePath)
-                    # controller.selectFolder()
+                    # if storing folder exist
+                    if AdbUtils.isFolderExists(controller.storePath, controller.d.serial):
+                        controller.setCheckbox(RECORD_CHECKBOX_ID, True)
+                        controller.setEditTextValue(STORING_RECORD_PATH_EDIT_TEXT_ID, controller.storePath)
                     controller.sleep(1)
+                    
+                    if AdbUtils.isFileExists(deviceAudioFile, controller.d.serial):
+                        controller.setCheckbox(PLAY_AUDIO_CHECKBOX_ID, True)
+                        controller.setEditTextValue(PLAY_AUDIO_FILE_EDIT_TEXT_ID, deviceAudioFile)
+                    controller.sleep(1)
+
                     controller.clickButton(MAKE_AUDIO_CALL_BTN_ID)
 
-                    controller.sleep(10)
+                    controller.sleep(30)
                     controller.press("back")
                     controller.press("back")
         except Exception as e:
