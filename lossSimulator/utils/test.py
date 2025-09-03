@@ -1,13 +1,23 @@
 import uiautomator2 as u2
 import subprocess
 from datetime import datetime
+import time
+from enum import Enum
 
+'''
+adb defined intents:
+CALL_MODE: str
+RECORD_AUDIO_PATH: str
+CALL_OPTION: str
+AUDIO_FILE_PATH: str
+'''
 
 DEFAULT_TIMEOUT = 5
+DEFAULT_EVAL_TIMEOUT = 30
 
 DESKTOP_STATIC_FOLDER = "../static/"
 AUDIO_FILE = "audio.wav"
-ANDROID_DEMO_PATH = "/demo"
+ANDROID_DEMO_PATH = "demoapp"
 
 PACKAGE = "com.vng.zing.vn.zrtc.demo"
 APP_PACKAGE = f"{PACKAGE}.debug"
@@ -28,16 +38,102 @@ PLAY_AUDIO_FILE_EDIT_TEXT_ID = f"{APP_PACKAGE}:id/played_audio_file"
 # buttons section
 MAKE_AUDIO_CALL_BTN_ID = f"{APP_PACKAGE}:id/btn_make_audio_call"
 
-# 'Call with' selections
-CALL_WITH_SELECTIONS = ["Server", "Loopback Local", "Loopback Server"]
+# Main Activity
+MAIN_ACTIVITY = f"{PACKAGE}.ConferenceActivity"
+
+class CALL_OPTION(Enum):
+    LOOPBACK_SERVER = 0
+    SERVER = 1
+    LOOPBACK_LOCAL = 2
+
+class CALL_MODE:
+    AUDIO = "audio"
+    VIDEO = "video"
+    GROUP = "group"
 
 class DateTimeUtils:
-    
     @staticmethod
     def getTimestamped():
         return datetime.now().strftime("%d-%m-%Y_%H%M%S")
 
 class AdbUtils:
+    @staticmethod
+    def startActivityWithExtras(packageName, activityName, deviceId=None, stringExtras=None, intExtras=None, boolExtras=None):
+        cmd = ["adb"]
+        if deviceId:  # only add -s if user provided
+            cmd += ["-s", deviceId]
+        cmd += ["shell", "am", "start"]
+
+        # String extras
+        if stringExtras:
+            for key, val in stringExtras.items():
+                cmd += ["--es", key, str(val)]
+
+        # Int extras
+        if intExtras:
+            for key, val in intExtras.items():
+                cmd += ["--ei", key, str(val)]
+
+        if boolExtras:
+            for key, val in boolExtras.items():
+                cmd += ["--ez", key, "true" if val else "false"]
+
+        cmd.append(f"{packageName}/{activityName}")
+        subprocess.run(cmd, check=True)
+
+    @staticmethod
+    def getDownloadsPath(device_id=None):
+        candidates = [
+            "/sdcard/Download",
+            "/storage/emulated/0/Download",
+            "/mnt/sdcard/Download"
+        ]
+        for path in candidates:
+            cmd = ["adb"]
+            if device_id:
+                cmd += ["-s", device_id]
+            cmd += ["shell", "ls", path]
+            result = subprocess.run(cmd, capture_output=True, text=True)
+            if "No such file" not in result.stdout and "not found" not in result.stdout:
+                return path
+        return None
+class AdbUtils:
+
+    @staticmethod
+    def startActivityWithExtras(packageName, activityName, deviceId=None, stringExtras=None, intExtras=None, boolExtras=None):
+        cmd = ["adb"]
+        if deviceId:
+            cmd += ["-s", deviceId]
+        cmd += ["shell", "am", "start"]
+
+        if stringExtras:
+            for key, val in stringExtras.items():
+                cmd += ["--es", key, str(val)]
+
+        if intExtras:
+            for key, val in intExtras.items():
+                cmd += ["--ei", key, str(val)]
+
+        if boolExtras:
+            for key, val in boolExtras.items():
+                cmd += ["--ez", key, "true" if val else "false"]
+
+        cmd.append(f"{packageName}/{activityName}")
+        try:
+            subprocess.run(cmd, check=True)
+        except Exception as e:
+            raise e
+
+    def pullFiles(src, des, deviceId=None):
+        cmd = ["adb"]
+        if deviceId:
+            cmd += ["-s", deviceId]
+        cmd += ["pull", src, des]
+
+        try:
+            subprocess.run(cmd, check=True)
+        except subprocess.CalledProcessError as e:
+            raise e
 
     @staticmethod
     def pushFile(src, dest, deviceId=None):
@@ -116,20 +212,31 @@ class AdbUtils:
             print("Error running adb:", e)
             return []
 
-
-import uiautomator2 as u2
-
 class AndroidAppController:
-    def __init__(self, deviceId=None, packageName = APP_PACKAGE, path = ANDROID_DEMO_PATH):
+    def __init__(self, deviceId=None, packageName = APP_PACKAGE, path = ANDROID_DEMO_PATH, callMode = CALL_MODE.AUDIO, callOption = CALL_OPTION.LOOPBACK_SERVER.value):
         if deviceId:
             self.d = u2.connect(deviceId)
         else:
             self.d = u2.connect()
         
+        self.serial = self.d.serial
+        
         self.packageName = packageName
-        self.defaultPath = AdbUtils.getDownloadsPath(self.d.serial) + path
+        self.defaultPath = AdbUtils.getDownloadsPath(self.d.serial) + "/" + path
         self.storePath = self.defaultPath + "/" + DateTimeUtils.getTimestamped()
         AdbUtils.createTmpDir(self.storePath, self.d.serial)
+
+        self.deviceAudioFile = self.defaultPath + "/" + AUDIO_FILE
+        AdbUtils.pushFile(DESKTOP_STATIC_FOLDER + AUDIO_FILE, self.deviceAudioFile)
+
+        self.stringExtras = {
+            "CALL_MODE": callMode,
+            "CALL_OPTION": callOption,
+            "RECORD_AUDIO_PATH": self.storePath,
+            "AUDIO_FILE_PATH": self.deviceAudioFile
+        }
+        self.intExtras = None
+        self.boolExtras = None
         
 
     def startApp(self, packageName = None):
@@ -213,44 +320,61 @@ class AndroidAppController:
     def press(self, cmd):
         self.d.press(cmd)
 
+    def startActivity(self, activity, stringExtras=None, intExtras=None, boolExtras=None):
+        if stringExtras or intExtras or boolExtras:
+            AdbUtils.startActivityWithExtras(self.packageName, activity, self.serial, stringExtras, intExtras, boolExtras)
+        else:
+            AdbUtils.startActivityWithExtras(self.packageName, activity, self.serial, self.stringExtras, self.intExtras, self.boolExtras)
+
+    def startEval(self, activity,timeout = DEFAULT_EVAL_TIMEOUT, pcAudioPath = DESKTOP_STATIC_FOLDER):
+        self.startActivity(activity[0])
+        if self.waitForActivity(activity[1]):
+            self.sleep(timeout)
+            self.press("back")
+            self.press("back")
+
+            self.stopApp()
+
+            # pull audio files
+            AdbUtils.pullFiles(self.storePath, pcAudioPath, self.serial)
+
 if __name__ == "__main__":
     devices = AdbUtils.getConnectedDevices()
+    
     if len(devices) > 0:   
         print(devices)
         controller = AndroidAppController(deviceId=devices[0])
         controller.stopAll()
         controller.sleep(2)
-
-        # push audio file
-        deviceAudioFile = controller.defaultPath + "/" + AUDIO_FILE
-        AdbUtils.pushFile(DESKTOP_STATIC_FOLDER + AUDIO_FILE, deviceAudioFile)       
-
-        controller.startApp()
         try:
-            if controller.waitForActivity(DEMO_ACTIVITY):
-                # Loaded demo page
-                controller.clickButton(CALL_BTN_ID)
-                if controller.waitForActivity(LOGIN_ACTIVITY):
-                    # Loaded login page
-                    controller.sleep(1)
-                    controller.selectSpinnerItem(CALL_WITH_SELECTOR_ID, CALL_WITH_SELECTIONS[2])
-                    controller.sleep(1)
-                    # if storing folder exist
-                    if AdbUtils.isFolderExists(controller.storePath, controller.d.serial):
-                        controller.setCheckbox(RECORD_CHECKBOX_ID, True)
-                        controller.setEditTextValue(STORING_RECORD_PATH_EDIT_TEXT_ID, controller.storePath)
-                    controller.sleep(1)
+            # controller.startApp()
+            # if controller.waitForActivity(DEMO_ACTIVITY):
+            #     # Loaded demo page
+            #     controller.clickButton(CALL_BTN_ID)
+            #     if controller.waitForActivity(LOGIN_ACTIVITY):
+            #         # Loaded login page
+            #         controller.sleep(1)
+            #         controller.selectSpinnerItem(CALL_WITH_SELECTOR_ID, CALL_WITH_SELECTIONS[2])
+            #         controller.sleep(1)
+            #         # if storing folder exist
+            #         if AdbUtils.isFolderExists(controller.storePath, controller.d.serial):
+            #             controller.setCheckbox(RECORD_CHECKBOX_ID, True)
+            #             controller.setEditTextValue(STORING_RECORD_PATH_EDIT_TEXT_ID, controller.storePath)
+            #         controller.sleep(1)
                     
-                    if AdbUtils.isFileExists(deviceAudioFile, controller.d.serial):
-                        controller.setCheckbox(PLAY_AUDIO_CHECKBOX_ID, True)
-                        controller.setEditTextValue(PLAY_AUDIO_FILE_EDIT_TEXT_ID, deviceAudioFile)
-                    controller.sleep(1)
+            #         if AdbUtils.isFileExists(deviceAudioFile, controller.d.serial):
+            #             controller.setCheckbox(PLAY_AUDIO_CHECKBOX_ID, True)
+            #             controller.setEditTextValue(PLAY_AUDIO_FILE_EDIT_TEXT_ID, deviceAudioFile)
+            #         controller.sleep(1)
 
-                    controller.clickButton(MAKE_AUDIO_CALL_BTN_ID)
+            #         controller.clickButton(MAKE_AUDIO_CALL_BTN_ID)
 
-                    controller.sleep(30)
-                    controller.press("back")
-                    controller.press("back")
+            #         controller.sleep(10)
+            #         controller.press("back")
+            #         controller.press("back")
+            
+            controller.startEval([LOGIN_ACTIVITY, MAIN_ACTIVITY], timeout=5)
+            
         except Exception as e:
             print(e)
             controller.stopApp()
