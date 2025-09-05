@@ -1,7 +1,7 @@
 from django.shortcuts import render
 from django.http import HttpResponse, JsonResponse
 from django.http import HttpResponseNotFound
-from utils.utils import NetworkUtils, FileUtils, ADBUtils
+from utils.utils import NetworkUtils, FileUtils, AdbUtils
 
 def index(request):
 
@@ -26,13 +26,10 @@ def getJson(request, filename):
         return HttpResponseNotFound("Not found")
 
 def getAllDevices(request):
-    currentIp = NetworkUtils.getIpString(request)
-    allDevices = NetworkUtils.scanNetwork()
-    allDevices.remove(currentIp)
+    allDevices = AdbUtils.getConnectedDevices()
+
     return JsonResponse({"data": allDevices})
 
-def getDeviceNumbers(request):
-    if request.method == "GET":
-        return JsonResponse({"data": ADBUtils.getConnectedDevices()})
-    else:
-        return HttpResponseNotFound("Not found")
+def getDeviceIps(request, deviceId):
+    ips = AdbUtils.getDeviceIps(deviceId)
+    return JsonResponse({"data": ips})

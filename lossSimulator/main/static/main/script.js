@@ -1,16 +1,29 @@
+const DEVICE_ENDPOINT = '/api/devices'
 const PROXY_ENDPOINT = '/api/proxy/shape'
 export const MONITORING_INTERVAL = 10000; // in ms
 
-export async function fetchIp()
+export async function fetchDevices()
 {
-    const response = await fetch(`/api/ip`);
+    const response = await fetch(DEVICE_ENDPOINT);
 
     if (!response.ok) {
-      throw new Error(`[GET] Failed to fetch ip: ${response.statusText}`);
+      throw new Error(`[GET] Failed to fetch device: ${response.statusText}`);
     }
 
     return await response.json();
 }
+
+export async function fetchDeviceIp(device) {
+  const response = await fetch(`${DEVICE_ENDPOINT}/${device}/ip`);
+
+  if (!response.ok) {
+    throw new Error(`[GET] Failed to fetch device: ${response.statusText}`);
+  }
+
+  const data = await response.json();
+  return data;
+}
+
 
 export async function fetchJson(filename) {
     const response = await fetch(`/api/json/${filename}`);
@@ -18,8 +31,9 @@ export async function fetchJson(filename) {
     if (!response.ok) {
       throw new Error(`[GET] Failed to fetch ${filename}: ${response.statusText}`);
     }
-
-    return await response.json();
+    const data = await response.json();
+    console.log(data);
+    return data;
 }
 
 export async function deleteShape(payload, endpoint = PROXY_ENDPOINT) {

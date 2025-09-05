@@ -4,11 +4,13 @@ import os
 import json
 from json.decoder import JSONDecodeError
 import requests
-from .constants import CONST
-import nmap
+from .constants import *
 import random
 import shutil
 import subprocess
+import uiautomator2 as u2
+import subprocess
+from datetime import datetime
 
 class NetworkUtils:
     def getIp(request: HttpRequest) -> str:
@@ -20,7 +22,7 @@ class NetworkUtils:
 
         return ip
 
-    def checkValidIPv4(ip: str, subnet: str = CONST.NETWORK_ATC_SUBMASK_NET) -> bool:
+    def checkValidIPv4(ip: str, subnet: str = NETWORK_ATC_SUBMASK_NET) -> bool:
         return ipaddress.ip_address(ip) in ipaddress.ip_network(subnet)
 
     @staticmethod
@@ -28,11 +30,11 @@ class NetworkUtils:
         ip = NetworkUtils.getIp(request)
         return (ip if NetworkUtils.checkValidIPv4(ip) else "Stranger")
     
-    @staticmethod
-    def scanNetwork(subnet=CONST.NETWORK_ATC_SUBMASK_NET):
-        nm = nmap.PortScanner()
-        nm.scan(hosts=subnet, arguments="-sn -n -T4 --host-timeout 1s")
-        return [host for host in nm.all_hosts() if nm[host].state() == "up"]
+    # @staticmethod
+    # def scanNetwork(subnet=NETWORK_ATC_SUBMASK_NET):
+    #     nm = nmap.PortScanner()
+    #     nm.scan(hosts=subnet, arguments="-sn -n -T4 --host-timeout 1s")
+    #     return [host for host in nm.all_hosts() if nm[host].state() == "up"]
 
 class FileUtils:
     
@@ -51,7 +53,7 @@ class FileUtils:
         return ""
 
     @staticmethod
-    def saveJsonFile(data, filePath: str, folderPath: str = CONST.JSON_CONFIG_FOLDER) -> bool:
+    def saveJsonFile(data, filePath: str, folderPath: str = JSON_CONFIG_FOLDER) -> bool:
         try:
             with open(os.path.join(folderPath, filePath), "w") as f:
                 json.dump(data, f, indent=4)
@@ -81,25 +83,25 @@ class FileUtils:
             return False
 
     @staticmethod
-    def listAllJsonFiles(folderPath: str = CONST.JSON_CONFIG_FOLDER) -> list[str]:
+    def listAllJsonFiles(folderPath: str = JSON_CONFIG_FOLDER) -> list[str]:
         res = FileUtils.listFile(folderPath, type="json")
         res.sort()
         return res
 
     @staticmethod
-    def listAllLossStrategyFiles(folderPath: str = CONST.LOSS_STRATEGIES_FOLDER) -> dict[str, int]:
+    def listAllLossStrategyFiles(folderPath: str = LOSS_STRATEGIES_FOLDER) -> dict[str, int]:
         res = FileUtils.listFile(folderPath, type="json")
         return res
 
     @staticmethod
-    def getJsonContent(filename: str, folderPath: str = CONST.JSON_CONFIG_FOLDER) -> str:
+    def getJsonContent(filename: str, folderPath: str = JSON_CONFIG_FOLDER) -> str:
         return FileUtils.openJsonFile(os.path.join(folderPath, filename))
     
     @staticmethod
     def getAtcInfo() -> dict:
         return {
-            "ip": CONST.NETWORK_ATC_GATEWAY_IP,
-            "endpoint": CONST.NETWORK_ATC_ENDPOINT
+            "ip": NETWORK_ATC_GATEWAY_IP,
+            "endpoint": NETWORK_ATC_ENDPOINT
         }
     
 class RequestUtils:
@@ -112,7 +114,7 @@ class RequestUtils:
             if ip == "":
                 for ipLoop in NetworkUtils.scanNetwork():
                     tmp = {}
-                    endpoint = CONST.NETWORK_ATC_GATEWAY_IP + CONST.NETWORK_ATC_ENDPOINT + ipLoop + "/"
+                    endpoint = NETWORK_ATC_GATEWAY_IP + NETWORK_ATC_ENDPOINT + ipLoop + "/"
                     try:
                         response = requests.get(endpoint)
                         tmp = {
@@ -126,7 +128,7 @@ class RequestUtils:
                         }
                     data.append(tmp)
             else:
-                endpoint = CONST.NETWORK_ATC_GATEWAY_IP + CONST.NETWORK_ATC_ENDPOINT + ip + "/"
+                endpoint = NETWORK_ATC_GATEWAY_IP + NETWORK_ATC_ENDPOINT + ip + "/"
                 try:
                     response = requests.get(endpoint)
                     if response.status_code//200 == 1:
@@ -154,7 +156,7 @@ class RequestUtils:
                 status=400
             )
 
-        endpoint = CONST.NETWORK_ATC_GATEWAY_IP + CONST.NETWORK_ATC_ENDPOINT + requestData['ip'] + "/"
+        endpoint = NETWORK_ATC_GATEWAY_IP + NETWORK_ATC_ENDPOINT + requestData['ip'] + "/"
 
         if request.method == 'POST':
             if 'strategy' in requestData:
@@ -167,7 +169,7 @@ class RequestUtils:
                         status=400
                     )
 
-                shapeData = FileUtils.getJsonContent(strate, CONST.LOSS_STRATEGIES_FOLDER)
+                shapeData = FileUtils.getJsonContent(strate, LOSS_STRATEGIES_FOLDER)
                 curLoss = shapeData["down"]["loss"]["percentage"]
                 loss = random.randint(0,100)
                 
@@ -179,7 +181,7 @@ class RequestUtils:
                     case "increaseOnly":
                         if loss >= curLoss:
                             shapeData["down"]["loss"]["percentage"] = loss
-                            FileUtils.saveJsonFile(shapeData, strate, CONST.LOSS_STRATEGIES_FOLDER)
+                            FileUtils.saveJsonFile(shapeData, strate, LOSS_STRATEGIES_FOLDER)
                     case _:
                         return JsonResponse({
                             "error": f"Strategy '{strate}' is not implemented"
@@ -245,8 +247,8 @@ class RequestUtils:
             
             # reset increaseOnly no matter what
             FileUtils.copyFile(
-                os.path.join(CONST.LOSS_STRATEGIES_FOLDER, "dynamic.json"),
-                os.path.join(CONST.LOSS_STRATEGIES_FOLDER, "increaseOnly.json")
+                os.path.join(LOSS_STRATEGIES_FOLDER, "dynamic.json"),
+                os.path.join(LOSS_STRATEGIES_FOLDER, "increaseOnly.json")
             )
 
             try:
@@ -268,16 +270,144 @@ class RequestUtils:
                 status=403
             ) 
         
-class ADBUtils:
+class AdbUtils:
 
-    '''
-    return list of 
-        {
-            "id": "...",
-            "name": "..."
-        }
+    @staticmethod
+    def getDeviceIps(deviceId=None):
+        cmd = ["adb"]
+        if deviceId:
+            cmd += ["-s", deviceId]
+        cmd += ["shell", "ip -f inet addr show"]
+
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        if result.returncode != 0:
+            raise Exception(f"adb error: {result.stderr}")
+
+        interfaces = []
+        current_iface = None
+        for line in result.stdout.splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            # Detect new interface
+            if line[0].isdigit() and ":" in line:
+                # Example: "3: wlan0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 ..."
+                parts = line.split(":")
+                if len(parts) >= 2:
+                    current_iface = parts[1].strip().split()[0]
+            elif line.startswith("inet ") and current_iface:
+                # Example: "inet 192.168.1.42/24 brd 192.168.1.255 scope global wlan0"
+                ip = line.split()[1].split("/")[0]
+                interfaces.append({"interface": current_iface, "ip": ip})
+
+        return interfaces
+
+    @staticmethod
+    def startActivityWithExtras(packageName, activityName, deviceId=None, stringExtras=None, intExtras=None, boolExtras=None):
+        cmd = ["adb"]
+        if deviceId:
+            cmd += ["-s", deviceId]
+        cmd += ["shell", "am", "start"]
+
+        if stringExtras:
+            for key, val in stringExtras.items():
+                cmd += ["--es", key, str(val)]
+
+        if intExtras:
+            for key, val in intExtras.items():
+                cmd += ["--ei", key, str(val)]
+
+        if boolExtras:
+            for key, val in boolExtras.items():
+                cmd += ["--ez", key, "true" if val else "false"]
+
+        cmd.append(f"{packageName}/{activityName}")
+        try:
+            subprocess.run(cmd, check=True)
+        except Exception as e:
+            raise e
+
+    def pullFiles(src, des, deviceId=None):
+        cmd = ["adb"]
+        if deviceId:
+            cmd += ["-s", deviceId]
+        cmd += ["pull", src, des]
+
+        try:
+            subprocess.run(cmd, check=True)
+        except subprocess.CalledProcessError as e:
+            raise e
+
+    @staticmethod
+    def pushFile(src, dest, deviceId=None):
+
+        cmd = ["adb"]
+        if deviceId:
+            cmd += ["-s", deviceId]
+        cmd += ["push", src, dest]
+
+        try:
+            result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+            return True
+        except subprocess.CalledProcessError as e:
+            print(e.stderr)
+            return False
     
-    '''
+    @staticmethod
+    def isFileExists(path, deviceId = None):
+        cmd = ["adb"]
+        if deviceId:
+            cmd += ["-s", deviceId]
+        cmd += ["shell", f"test -f {path} && echo 1 || echo 0"]
+
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        return result.stdout.strip() == "1"
+
+    @staticmethod
+    def isFolderExists(path, deviceId = None):
+        cmd = ["adb"]
+        if deviceId:
+            cmd += ["-s", deviceId]
+        cmd += ["shell", f"test -d {path} && echo 1 || echo 0"]
+
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        return result.stdout.strip() == "1"
+
+    @staticmethod
+    def getDownloadsPath(deviceId = None):
+        return AdbUtils.getDefaultPath(deviceId) + "/" + ANDROID_DOWNLOAD_PATH
+    
+    @staticmethod
+    def getDocumentPath(deviceId = None):
+        return AdbUtils.getDefaultPath(deviceId) + "/" + ANDROID_DOCUMENTS_PATH
+
+    @staticmethod
+    def getDefaultPath(deviceId = None):
+        candidates = [
+            "/storage/emulated/0",
+            "/sdcard",
+            "/mnt/sdcard"
+        ]
+        for path in candidates:
+            cmd = ["adb"]
+            if deviceId:
+                cmd += ["-s", deviceId]
+            cmd += ["shell", "ls", path]
+            result = subprocess.run(cmd, capture_output=True, text=True)
+            if "No such file" not in result.stdout and "not found" not in result.stdout:
+                return path
+        return None
+
+    @staticmethod
+    def createTmpDir(path, deviceId = None):
+        cmd = ["adb"]
+        if deviceId:
+            cmd += ["-s", deviceId]
+        cmd += ["shell", "mkdir", "-p", path]
+
+        subprocess.run(cmd, check=True)
+        print(f"Created dir: {path} on device {deviceId or ''}")
+
     @staticmethod
     def getConnectedDevices():
         try:
@@ -288,28 +418,7 @@ class ADBUtils:
                 check=True
             )
             lines = cmd.stdout.strip().split("\n")[1:]  # skip "List of devices attached"
-            devices = [line.split()[0] for line in lines if line.strip() and "device" in line]
-            returnVal = []
-            for device in devices:
-                try: 
-                    manufacturer = subprocess.run(
-                        ["adb", "-s", device, "shell", "getprop", "ro.product.manufacturer"],
-                        capture_output=True,
-                        text=True,
-                        check=True
-                    ).stdout.strip()
-                    model = subprocess.run(
-                        ["adb", "-s", device, "shell", "getprop", "ro.product.model"],
-                        capture_output=True,
-                        text=True,
-                        check=True
-                    ).stdout.strip()
-                    returnVal.append({"id": device, "name": manufacturer + " " + model})
-                except subprocess.CalledProcessError as e:
-                    print("Error running adb:", e)        
-                    returnVal.append({"id": device, "name": ""})
-                    
-            return returnVal
+            return [line.split()[0] for line in lines if line.strip() and "device" in line]
         except subprocess.CalledProcessError as e:
             print("Error running adb:", e)
             return []

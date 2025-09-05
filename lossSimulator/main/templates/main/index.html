@@ -2,6 +2,7 @@
 
 <!DOCTYPE html>
 <html>
+
 <head>
     <title>Loss Simulator</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
@@ -11,97 +12,75 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js"></script>
 </head>
+
 <body>
-    <h1>Hello, {{ name }}!</h1>
-        
-    <div class="d-flex flex-column gap-3">
-        <div class="row d-flex flex-md-row flex-column intro">
-                <div class="col-md-3 col-12 d-flex title align-items-center justify-content-center">
-                    <span>How to use</span>
-                </div>
-                <div class="col bg-light border">
-                <pre>
-1. (Optional) 
-    1.1 Set time to apply config -> If not, The config will just stop when you delete it
 
-    1.2 Toggle monitor button to get active/unactive shape config
 
-2. Select device IP you want to apply config
+    <div class="d-flex justify-content-center align-items-center">
+        <h1>Hello, {{ name }}!</h1>
+    </div>
 
-3. Choose option to apply:
-    3.1 Default Config JSON:
-            + Defined JSON config for different network configuration
-            + Can edit option to apply your own config
-
-    3.2 Defined Loss Strategies (based on Mr.Tien (tiend3) 's strategies):
-            + Fix90: Fixed 90% packet loss rate
-            + Dynamic: Loss rate varies over time (each ... second)
-            + IncreaseOnly: Same as Dynamic but loss rate always increase</pre>
-                </div>
+    <div class="container d-flex flex-column gap-3">
+        <div class="row d-flex flex-md-row flex-column intro" role="button" data-bs-toggle="collapse"
+            data-bs-target="#intro" aria-expanded="false" aria-controls="intro">
+            <div class="col-md-3 col-12 d-flex title align-items-center justify-content-center">
+                <span>How to use</span>
             </div>
-        
-    {% if name ==  "Stranger" %}
-        <h2>You don't have any permission, please call for help</h2>
-    {% else %}
-        <div class="row d-flex flex-row">
-            <div class="col ip-selector">
+            <div id="intro" class="col collapse bg-light border">
+                <pre>
++ Fix90: Fixed 90% packet loss rate
++ Dynamic: Loss rate varies over time (each ... second)
++ IncreaseOnly: Same as Dynamic but loss rate always increase</pre>
+            </div>
+        </div>
 
-                <div class="title"><span>IP Selector</span></div>
-                
-                <div class="row d-flex flex-row gap-3 p-2">
-                    <div class="col d-flex align-items-center gap-3">
-                        <label for="ipAddresses">Choose an IP:</label>
+        {% if name == "Stranger" %}
+        <h2>You don't have any permission, please call for help</h2>
+        {% else %}
+        <div class="row d-flex flex-row">
+            <div class="ip-selector">
+
+                <div class="title"><span>Device Selector</span></div>
+
+                <div class="row d-flex flex-column gap-3 p-2">
+                    <div class="col d-flex align-items-center justify-content-center gap-3">
+                        <label for="devices">Choose device:</label>
+                        <select id="devices" name="devices">
+                        </select>
+
+                        <label for="ipAddresses">Choose ip:</label>
                         <select id="ipAddresses" name="ipAddresses">
-                            <option value="{{ name }}" selected>{{ name }}</option>
-                            {% for device in devices %}
-                            <option value="{{ device }}">{{ device }}</option>
-                            {% endfor %}
                         </select>
                     </div>
                     <div class="col d-flex flex-column align-items-center justify-content-center gap-3">
-                        <button type="button" id="fetchIPBtn">Reload</button>
+                        <button type="button" id="fetchDeviceBtn">Reload</button>
                         <button type="button" id="deleteBtn">Delete Config</button>
                     </div>
-    
-                </div>
-            </div>
 
-            <div class="col ip-monitor">
-                <div class="title"><span>Monitor</span></div>
-                
-                <div class="row d-flex">
-                    <div class="col d-flex justify-content-center align-items-center gap-3 p-2">
-                        <button id="monitorToggleBtn" class="btn bg-danger text-white">
-                            OFF
-                        </button>
-                    </div>
-    
-                    <div class="col d-flex justify-content-center align-items-center gap-3 p-2">
-                        <ul id="activeShapeList" class="list-unstyled d-flex flex-column justify-content-center gap-3"></ul>
-                    </div>
                 </div>
             </div>
         </div>
 
-        <div class="row d-flex flex-column timer-container p-2">
-            <div class="title"><span>Timer</span></div>
-            <div id="timer" class="d-flex align-items-center justify-content-center gap-3">
-                <label>Time to apply config:</label>
-                <input type="number" id="hours" min="0" value="0" style="width:60px">
-                <span>:</span>
-                <input type="number" id="minutes" min="0" max="59" value="0" style="width:60px">
-                <span>:</span>
-                <input type="number" id="seconds" min="0" max="59" value="0" style="width:60px">
-            </div>
-        </div>
-
-        <div class="row d-flex flex-md-row flex-column config-container">
-            
-            <div class="col default-config-json d-flex flex-column align-items-center gap-3 p-2">
-                <div class="title">
-                    <span>Default Config JSON</span>
+        <div id="ip-selected-display-container" class="d-none">
+            <div class="row d-flex flex-column timer-container p-2">
+                <div class="title"><span>Timer</span></div>
+                <div id="timer" class="d-flex align-items-center justify-content-center gap-3">
+                    <label>Time to apply config:</label>
+                    <input type="number" id="hours" min="0" value="0" style="width:60px">
+                    <span>:</span>
+                    <input type="number" id="minutes" min="0" max="59" value="0" style="width:60px">
+                    <span>:</span>
+                    <input type="number" id="seconds" min="0" max="59" value="0" style="width:60px">
                 </div>
-    
+            </div>
+
+            <div class="row d-flex flex-md-row flex-column config-container">
+
+                <div class="col default-config-json d-flex flex-column align-items-center gap-3 p-2">
+                    <div class="title">
+                        <span>Default Config JSON</span>
+                    </div>
+
                     <div class="row d-flex align-items-center gap-3">
                         <label for="jsonFiles">Choose a config:</label>
                         <select id="jsonFiles" name="jsonFiles">
@@ -111,7 +90,7 @@
                             {% endfor %}
                         </select>
                     </div>
-    
+
                     <div id="editor">
                         <form id="jsonForm" method="post" class="row d-flex flex-column gap-3 p-2">
                             {% csrf_token %}
@@ -119,77 +98,150 @@
                             <button type="submit" id="applyDefaultBtn">Apply</button>
                         </form>
                     </div>
-            </div>
-    
-            <div class="col defined-loss-strategy d-flex flex-column align-items-center gap-3 p-2">
-                <div class="title">Defined Loss Strategies</div>
-                <form id="strategyForm" method="post" class="row d-flex flex-column gap-3 p-2">
-                            {% csrf_token %}
-                            <label for="strategies">Choose a strategy:</label>
-                            <select id="strategies" name="strategies">
-                                <option value="" selected>-- Select a strategy --</option>
-                                {% for strategy in strategies %}
-                                <option value="{{ strategy }}">{{ strategy|cut:".json" }}</option>
-                                {% endfor %}
-                            </select>
-                            <div id="stratContainer" class="d-none">
-                                <div id="lossValue" class="d-flex flex-column">
-                                    <div class="col d-flex justify-content-center align-items-center">
-                                        <span>Loss Percentage: </span>
-                                        <input id="lossValueInput" type="number" value="" readonly disabled>
-                                        <span>%</span>
-                                    </div>
-                                    <div class="col d-flex justify-content-center align-items-center">
-                                        <span>Change every </span>
-                                        <input type="number" id="cycleSeconds" min="0" value="5" style="width:60px">
-                                        <span>s</span>
-                                    </div>
+                </div>
+
+                <div class="col defined-loss-strategy d-flex flex-column align-items-center gap-3 p-2">
+                    <div class="title">Defined Loss Strategies</div>
+                    <form id="strategyForm" method="post" class="row d-flex flex-column gap-3 p-2">
+                        {% csrf_token %}
+                        <label for="strategies">Choose a strategy:</label>
+                        <select id="strategies" name="strategies">
+                            <option value="" selected>-- Select a strategy --</option>
+                            {% for strategy in strategies %}
+                            <option value="{{ strategy }}">{{ strategy|cut:".json" }}</option>
+                            {% endfor %}
+                        </select>
+                        <div id="stratContainer" class="d-none">
+                            <div id="lossValue" class="d-flex flex-column">
+                                <div class="col d-flex justify-content-center align-items-center">
+                                    <span>Loss Percentage: </span>
+                                    <input id="lossValueInput" type="number" value="" readonly disabled>
+                                    <span>%</span>
                                 </div>
-                                <button type="submit" id="applyStrategyBtn" disabled>Apply</button>
+                                <div class="col d-flex justify-content-center align-items-center">
+                                    <span>Change every </span>
+                                    <input type="number" id="cycleSeconds" min="0" value="5" style="width:60px">
+                                    <span>s</span>
+                                </div>
                             </div>
-                        </form>
-                    
+                            <button type="submit" id="applyStrategyBtn" disabled>Apply</button>
+                        </div>
+                    </form>
+
                 </div>
             </div>
         </div>
     </div>
+    </div>
+
+
     {% endif %}
+    <!-- 
+<div id="inputContainer" class="d-flex flex-column gap-2">
+  <div class="d-flex flex-row gap-2">
+    <input type="text" class="form-control key" placeholder="Key">
+    <input type="text" class="form-control value" placeholder="Value">
+  </div>
+</div>
+
+<button id="addBtn" class="btn btn-primary mt-2">Add Row</button>
+<button id="getBtn" class="btn btn-success mt-2">Log Array</button>
+
+<script>
+  const container = document.getElementById("inputContainer");
+  const addBtn = document.getElementById("addBtn");
+  const getBtn = document.getElementById("getBtn");
+
+  // our "model" array of {key,value}
+  let rowsData = [];
+
+  // function to attach listeners on each row's inputs
+  function bindRow(rowObj, keyInput, valueInput) {
+    keyInput.addEventListener("input", () => {
+      rowObj.key = keyInput.value.trim();
+    });
+    valueInput.addEventListener("input", () => {
+      rowObj.value = valueInput.value.trim();
+    });
+  }
+
+  // add first row manually (since it exists in HTML)
+  (() => {
+    const keyInput = container.querySelector(".key");
+    const valueInput = container.querySelector(".value");
+    const rowObj = { key: keyInput.value.trim(), value: valueInput.value.trim() };
+    rowsData.push(rowObj);
+    bindRow(rowObj, keyInput, valueInput);
+  })();
+
+  // Add new row
+  addBtn.addEventListener("click", () => {
+    const row = document.createElement("div");
+    row.className = "d-flex flex-row gap-2";
+
+    const keyInput = document.createElement("input");
+    keyInput.type = "text";
+    keyInput.className = "form-control key";
+    keyInput.placeholder = "Key";
+
+    const valueInput = document.createElement("input");
+    valueInput.type = "text";
+    valueInput.className = "form-control value";
+    valueInput.placeholder = "Value";
+
+    row.appendChild(keyInput);
+    row.appendChild(valueInput);
+    container.appendChild(row);
+
+    // create object in array + bind updates
+    const rowObj = { key: "", value: "" };
+    rowsData.push(rowObj);
+    bindRow(rowObj, keyInput, valueInput);
+  });
+
+  // Log array
+  getBtn.addEventListener("click", () => {
+    console.log(rowsData);
+    // Example: [ {key:"name", value:"Alice"}, {key:"age", value:"30"} ]
+  });
+</script> -->
+
 
 </body>
 
 <script type="module">
-    import { 
-        fetchJson, 
+    import {
+        fetchJson,
         applyConfig,
         postShape,
-        deleteShape, 
+        deleteShape,
         convertTimerToMs,
-        fetchIp,
-        getShape,
-        MONITORING_INTERVAL
+        fetchDevices,
+        fetchDeviceIp,
+        getShape
     } from "{% static 'main/script.js' %}";
-    
+
     // select DOM Objects
     const editorContainer = document.getElementById("editor");
-    const editor =  CodeMirror.fromTextArea(document.getElementById("json-editor"), {
-                        mode: "application/json",
-                        theme: "dracula",
-                        lineNumbers: true,
-                    });
+    const editor = CodeMirror.fromTextArea(document.getElementById("json-editor"), {
+        mode: "application/json",
+        theme: "dracula",
+        lineNumbers: true,
+    });
     const defaultConfigSelector = document.getElementById("jsonFiles");
     const strategySelector = document.getElementById("strategies");
     const jsonForm = document.getElementById('jsonForm');
     const strategyForm = document.getElementById('strategyForm');
     const deleteBtn = document.getElementById("deleteBtn");
     const applyDefaultBtn = document.getElementById("applyDefaultBtn");
-    const fetchIpBtn = document.getElementById("fetchIPBtn");
+    const fetchDeviceBtn = document.getElementById("fetchDeviceBtn");
     const hour = document.getElementById("hours");
     const minute = document.getElementById("minutes");
     const second = document.getElementById("seconds");
-    const activeShapeList = document.getElementById("activeShapeList");
-    const ipSelector = document.getElementById("ipAddresses");
-    const monitorBtn = document.getElementById("monitorToggleBtn");
+    const deviceSelector = document.getElementById("devices");
+    const ipAddressSelector = document.getElementById("ipAddresses");
     const stratDiv = document.getElementById("stratContainer");
+    const step2Div = document.getElementById("ip-selected-display-container");
     const lossValueDiv = document.getElementById("lossValue");
     const applyStratBtn = document.getElementById("applyStrategyBtn");
     const lossValueInput = document.getElementById("lossValueInput");
@@ -198,38 +250,32 @@
     // variables
     var previousIp = "";
     let countDownInterval = null;
-    let monitoringInterval = null;
     let cycleInterval = null;
 
     // functions
-    function setTimerValue(value)
-    {
-        const totalSeconds = Math.floor(value/1000);
+    function setTimerValue(value) {
+        const totalSeconds = Math.floor(value / 1000);
         const s = totalSeconds % 60;
         second.value = s;
         const m = Math.floor((totalSeconds % 3600) / 60);
-        if (m != minute.value)
-        {
+        if (m != minute.value) {
             minute.value = m;
             const h = Math.floor(totalSeconds / 3600);
-            if (h != hour.value)
-            {
+            if (h != hour.value) {
                 hour.value = h;
             }
         }
     }
 
-    async function resetTimer()
-    {
+    async function resetTimer() {
         if (countDownInterval) clearInterval(countDownInterval);
         if (cycleInterval) clearInterval(cycleInterval);
-        try{
+        try {
             await deleteShape({
                 "ip": previousIp
             });
         }
-        finally
-        {
+        finally {
             countDownInterval = null;
             hour.value = 0;
             minute.value = 0;
@@ -242,8 +288,7 @@
         }
     }
 
-    function countDown(timeLeft)
-    {
+    function countDown(timeLeft) {
         if (timeLeft <= 0) return;
         if (countDownInterval) clearInterval(countDownInterval);
 
@@ -258,13 +303,11 @@
         }, 1000);
     }
 
-    function isAppliedJsonConf(val)
-    {
-        if (val)
-        {
+    function isAppliedJsonConf(val) {
+        if (val) {
             applyDefaultBtn.textContent = "Applied"
             applyDefaultBtn.style.backgroundColor = "green";
-            applyDefaultBtn.style.color = "white";    
+            applyDefaultBtn.style.color = "white";
             return;
         }
 
@@ -274,10 +317,8 @@
 
     }
 
-    function isAppliedStratConf(val)
-    {
-        if (val)
-        {
+    function isAppliedStratConf(val) {
+        if (val) {
             stratDiv.className = "d-flex flex-column align-items-center gap-3";
             applyStratBtn.disabled = false;
             return;
@@ -288,36 +329,73 @@
 
     }
 
-    async function getActiveShape() {
-        try {
-            const res = (await getShape()).data;
-            activeShapeList.innerHTML = "";
-            res.forEach(data => {
-                const isActive = data.active;
-                const li = document.createElement("li");
-                li.className = (isActive ? "bg-success" : "bg-danger") + " text-white"
-                li.textContent = data.ip + (isActive ? "(active)" : "(inactive)");
-                activeShapeList.appendChild(li);
-            })
-        }
-        finally {
-            return;
-        }
-    }
-
     async function removePreviousConfig() {
-        if (previousIp !== "")
-        {
+        if (previousIp !== "") {
             try {
                 deleteShape({
                     "ip": previousIp
                 });
-                await sleep(500);  
+                await sleep(500);
             }
-            catch
-            {
+            catch {
                 // do nothing
             }
+        }
+    }
+
+    async function fetchDevicesEvent() {
+        deviceSelector.disabled = true;
+        try {
+            const devices = (await fetchDevices()).data;
+            // clear existing options
+            deviceSelector.innerHTML = "";
+
+            for (let i = 0; i < devices.length; i += 1) {
+                const opt = document.createElement("option");
+                opt.value = devices[i];
+                opt.textContent = devices[i];
+                deviceSelector.appendChild(opt);
+                if (i == 0) {
+                    deviceSelector.value = devices[0];
+                    deviceSelector.dispatchEvent(new Event("change"));
+                }
+            }
+        }
+        catch (err) {
+            alert("[GET] Devices error")
+        }
+        finally {
+            deviceSelector.disabled = false;
+        }
+    }
+
+    async function fetchDeviceIpsEvent(e) {
+        e.preventDefault();
+        ipAddressSelector.disabled = true;
+        try {
+            const ipAddresses = (await fetchDeviceIp(deviceSelector.value)).data;
+            // clear existing options
+            ipAddressSelector.innerHTML = "";
+
+            for (let i = 0; i < ipAddresses.length; i += 1) {
+                const ip = ipAddresses[i].ip;
+                if (!ip.startsWith("10.42")) continue;
+                const opt = document.createElement("option");
+                opt.value = ip;
+                opt.textContent = ipAddresses[i].interface + " " + ip;
+                ipAddressSelector.appendChild(opt);
+            }
+
+            if (ipAddresses.length > 0) {
+                ipAddressSelector.value = ipAddressSelector.children[0].value;
+                step2Div.className = "d-block";
+            }
+        }
+        catch (err) {
+            alert("[GET] Ips error with err " + err.message);
+        }
+        finally {
+            ipAddressSelector.disabled = false;
         }
     }
     // end functions
@@ -329,26 +407,23 @@
     // on change option value
     defaultConfigSelector.addEventListener("change", async (event) => {
         const selectedValue = event.target.value;
-        if (!selectedValue || selectedValue.length <= 0)
-        {
+        if (!selectedValue || selectedValue.length <= 0) {
             // if selectedValue is "" or null -> display none
             editorContainer.style.display = "none";
             return;
         }
         editorContainer.style.display = "block";
-        try{
+        try {
             const data = await fetchJson(selectedValue);
             try {
                 editor.setValue(JSON.stringify(data.data.content, null, 2));
             }
-            catch (err)
-            {
+            catch (err) {
                 editor.setValue(JSON.stringify(data.data, null, 2));
             }
 
         }
-        catch (err)
-        {
+        catch (err) {
             editor.setValue("// " + err);
         }
     });
@@ -357,34 +432,29 @@
     jsonForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         removePreviousConfig();
-        
+
         let jsonData = {};
-        try 
-        {
+        try {
             jsonData.data = JSON.parse(editor.getValue());
-            jsonData.ip = ipSelector.value;
-        } catch (err) 
-        {
+            jsonData.ip = deviceSelector.value;
+        } catch (err) {
             alert('Invalid JSON: ' + err.message);
             return;
         }
-        finally
-        {
+        finally {
             const h = parseInt(hour.value, 0);
             const m = parseInt(minute.value, 0);
             const s = parseInt(second.value, 0);
-            
-            const timerValue = convertTimerToMs(h,m,s);
-            try 
-            {
+
+            const timerValue = convertTimerToMs(h, m, s);
+            try {
                 await applyConfig(jsonData);
                 isAppliedJsonConf(true)
                 countDown(timerValue);
-                previousIp = ipSelector.value;
+                previousIp = deviceSelector.value;
                 strategySelector.value = "";
             }
-            catch (e)
-            {
+            catch (e) {
                 isAppliedJsonConf(false)
                 previousIp = "";
                 alert("Error " + e);
@@ -396,78 +466,33 @@
     deleteBtn.addEventListener("click", async () => {
         if (!confirm("Are you sure you want to delete this config?")) return;
 
-        try 
-        {
+        try {
             const res = await deleteShape({
-                "ip": ipSelector.value
+                "ip": deviceSelector.value
             });
             if (!res.ok) throw new Error(res.status);
             alert("Deleted successfully!");
             isAppliedJsonConf(false);
             resetTimer();
-        } 
-        catch (err) 
-        {
+        }
+        catch (err) {
             console.error(err);
             alert("Error deleting config with status: " + err);
         }
     });
 
     // reload ip btn on click handler
-    fetchIpBtn.addEventListener("click", async () => {
-        ipSelector.disabled = true;
-        try{
-            const devices = (await fetchIp()).data;
-            // clear existing options
-            ipSelector.innerHTML = `<option value="{{ name }}" selected>{{ name }}</option>`;
-            devices.forEach(device => {
-                const opt = document.createElement("option");
-                opt.value = device;
-                opt.textContent = device;
-                ipSelector.appendChild(opt);
-            });
-        }
-        catch (err)
-        {
-            alert("[GET] Ips error")
-        }
-        finally
-        {
-            ipSelector.disabled=false;
-        }
-    });
-
-    // Monitor btn on click handler 
-    monitorBtn.addEventListener("click", async () => {
-        if (monitorBtn.classList.contains("bg-danger"))
-        {
-            monitorBtn.textContent = "ON";
-            monitorBtn.className = "btn bg-success text-white";
-            getActiveShape();
-            monitoringInterval = setInterval(getActiveShape, MONITORING_INTERVAL);
-            return;
-        }
-
-        // else
-        monitorBtn.textContent = "OFF";
-        monitorBtn.className = "btn bg-danger text-white";
-        if (monitoringInterval) clearInterval(monitoringInterval);
-        monitoringInterval = null;
-        activeShapeList.innerHTML = "";
-    });
+    fetchDeviceBtn.addEventListener("click", fetchDevicesEvent);
 
     // strategySelector on change handler
     strategySelector.addEventListener("change", async (event) => {
         event.preventDefault();
-        if (strategySelector.value.length > 0)
-        {
+        if (strategySelector.value.length > 0) {
             isAppliedStratConf(true);
-            if (!strategySelector.value.startsWith("fix"))
-            {
+            if (!strategySelector.value.startsWith("fix")) {
                 lossValueDiv.className = "d-flex flex-column align-items-center gap-2";
             }
-            else
-            {
+            else {
                 lossValueDiv.className = "d-none";
             }
             return;
@@ -475,63 +500,68 @@
         isAppliedStratConf(false);
     });
 
+    // deviceSelector on change handler
+    deviceSelector.addEventListener("change", fetchDeviceIpsEvent);
+
 
     // strategyForm on submit
     strategyForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         removePreviousConfig();
-        
+
         let jsonData = {};
-        try 
-        {
+        try {
             jsonData.strategy = strategySelector.value;
-            jsonData.ip = ipSelector.value;
-        } catch (err) 
-        {
+            jsonData.ip = deviceSelector.value;
+        } catch (err) {
             alert('Invalid JSON: ' + err.message);
             return;
         }
-        finally
-        {
+        finally {
             const h = parseInt(hour.value, 0);
             const m = parseInt(minute.value, 0);
             const s = parseInt(second.value, 0);
-            
-            const timerValue = convertTimerToMs(h,m,s);
+
+            const timerValue = convertTimerToMs(h, m, s);
             try {
                 const resp = await applyConfig(jsonData);
                 countDown(timerValue);
-                previousIp = ipSelector.value;
+                previousIp = deviceSelector.value;
                 defaultConfigSelector.value = "";
                 lossValueInput.value = resp.loss;
 
                 // start Cycle Interval
                 if (cycleInterval) clearInterval(cycleInterval);
-                if (!strategySelector.value.startsWith("fix") && cycleSecondsInput.value > 0)
-                {
+                if (!strategySelector.value.startsWith("fix") && cycleSecondsInput.value > 0) {
                     cycleInterval = setInterval(async () => {
                         try {
                             const resp = await postShape(jsonData);
                             lossValueInput.value = resp.loss;
                             defaultConfigSelector.value = "";
                         }
-                        catch (e)
-                        {
+                        catch (e) {
                             if (cycleInterval) clearInterval(cycleInterval);
                             cycleInterval = null;
                             lossValueInput.value = "";
                             alert("Error " + e);
                         }
-                    }, cycleSecondsInput.value * 1000); 
+                    }, cycleSecondsInput.value * 1000);
                 }
             }
-            catch (e)
-            {
+            catch (e) {
                 previousIp = "";
                 alert("Error " + e);
                 return;
             }
         }
     });
+
+
+    // run once after DOM and handlers are ready
+    window.addEventListener("DOMContentLoaded", () => {
+        fetchDevicesEvent();
+    });
 </script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
 </html>

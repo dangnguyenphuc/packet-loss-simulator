@@ -18,6 +18,8 @@ DEFAULT_EVAL_TIMEOUT = 30
 DESKTOP_STATIC_FOLDER = "../static/"
 AUDIO_FILE = "audio.wav"
 ANDROID_DEMO_PATH = "demoapp"
+ANDROID_DOWNLOAD_PATH = "Download"
+ANDROID_DOCUMENTS_PATH = "Documents"
 
 PACKAGE = "com.vng.zing.vn.zrtc.demo"
 APP_PACKAGE = f"{PACKAGE}.debug"
@@ -55,49 +57,36 @@ class DateTimeUtils:
     @staticmethod
     def getTimestamped():
         return datetime.now().strftime("%d-%m-%Y_%H%M%S")
-
 class AdbUtils:
     @staticmethod
-    def startActivityWithExtras(packageName, activityName, deviceId=None, stringExtras=None, intExtras=None, boolExtras=None):
+    def getDeviceIp(device_id=None):
         cmd = ["adb"]
-        if deviceId:  # only add -s if user provided
-            cmd += ["-s", deviceId]
-        cmd += ["shell", "am", "start"]
+        if device_id:
+            cmd += ["-s", device_id]
+        cmd += ["shell", "ip -f inet addr show"]
 
-        # String extras
-        if stringExtras:
-            for key, val in stringExtras.items():
-                cmd += ["--es", key, str(val)]
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        if result.returncode != 0:
+            raise Exception(f"adb error: {result.stderr}")
 
-        # Int extras
-        if intExtras:
-            for key, val in intExtras.items():
-                cmd += ["--ei", key, str(val)]
+        interfaces = []
+        current_iface = None
+        for line in result.stdout.splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            # Detect new interface
+            if line[0].isdigit() and ":" in line:
+                # Example: "3: wlan0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 ..."
+                parts = line.split(":")
+                if len(parts) >= 2:
+                    current_iface = parts[1].strip().split()[0]
+            elif line.startswith("inet ") and current_iface:
+                # Example: "inet 192.168.1.42/24 brd 192.168.1.255 scope global wlan0"
+                ip = line.split()[1].split("/")[0]
+                interfaces.append({"interface": current_iface, "ip": ip})
 
-        if boolExtras:
-            for key, val in boolExtras.items():
-                cmd += ["--ez", key, "true" if val else "false"]
-
-        cmd.append(f"{packageName}/{activityName}")
-        subprocess.run(cmd, check=True)
-
-    @staticmethod
-    def getDownloadsPath(device_id=None):
-        candidates = [
-            "/sdcard/Download",
-            "/storage/emulated/0/Download",
-            "/mnt/sdcard/Download"
-        ]
-        for path in candidates:
-            cmd = ["adb"]
-            if device_id:
-                cmd += ["-s", device_id]
-            cmd += ["shell", "ls", path]
-            result = subprocess.run(cmd, capture_output=True, text=True)
-            if "No such file" not in result.stdout and "not found" not in result.stdout:
-                return path
-        return None
-class AdbUtils:
+        return interfaces
 
     @staticmethod
     def startActivityWithExtras(packageName, activityName, deviceId=None, stringExtras=None, intExtras=None, boolExtras=None):
@@ -172,10 +161,18 @@ class AdbUtils:
 
     @staticmethod
     def getDownloadsPath(deviceId = None):
+        return AdbUtils.getDefaultPath(deviceId) + "/" + ANDROID_DOWNLOAD_PATH
+    
+    @staticmethod
+    def getDocumentPath(deviceId = None):
+        return AdbUtils.getDefaultPath(deviceId) + "/" + ANDROID_DOCUMENTS_PATH
+
+    @staticmethod
+    def getDefaultPath(deviceId = None):
         candidates = [
-            "/storage/emulated/0/Download",
-            "/sdcard/Download",
-            "/mnt/sdcard/Download"
+            "/storage/emulated/0",
+            "/sdcard",
+            "/mnt/sdcard"
         ]
         for path in candidates:
             cmd = ["adb"]
@@ -339,42 +336,43 @@ class AndroidAppController:
             AdbUtils.pullFiles(self.storePath, pcAudioPath, self.serial)
 
 if __name__ == "__main__":
-    devices = AdbUtils.getConnectedDevices()
+    # devices = AdbUtils.getConnectedDevices()
     
-    if len(devices) > 0:   
-        print(devices)
-        controller = AndroidAppController(deviceId=devices[0])
-        controller.stopAll()
-        controller.sleep(2)
-        try:
-            # controller.startApp()
-            # if controller.waitForActivity(DEMO_ACTIVITY):
-            #     # Loaded demo page
-            #     controller.clickButton(CALL_BTN_ID)
-            #     if controller.waitForActivity(LOGIN_ACTIVITY):
-            #         # Loaded login page
-            #         controller.sleep(1)
-            #         controller.selectSpinnerItem(CALL_WITH_SELECTOR_ID, CALL_WITH_SELECTIONS[2])
-            #         controller.sleep(1)
-            #         # if storing folder exist
-            #         if AdbUtils.isFolderExists(controller.storePath, controller.d.serial):
-            #             controller.setCheckbox(RECORD_CHECKBOX_ID, True)
-            #             controller.setEditTextValue(STORING_RECORD_PATH_EDIT_TEXT_ID, controller.storePath)
-            #         controller.sleep(1)
+    # if len(devices) > 0:   
+    #     print(devices)
+    #     controller = AndroidAppController(deviceId=devices[0])
+    #     controller.stopAll()
+    #     controller.sleep(2)
+    #     try:
+    #         # controller.startApp()
+    #         # if controller.waitForActivity(DEMO_ACTIVITY):
+    #         #     # Loaded demo page
+    #         #     controller.clickButton(CALL_BTN_ID)
+    #         #     if controller.waitForActivity(LOGIN_ACTIVITY):
+    #         #         # Loaded login page
+    #         #         controller.sleep(1)
+    #         #         controller.selectSpinnerItem(CALL_WITH_SELECTOR_ID, CALL_WITH_SELECTIONS[2])
+    #         #         controller.sleep(1)
+    #         #         # if storing folder exist
+    #         #         if AdbUtils.isFolderExists(controller.storePath, controller.d.serial):
+    #         #             controller.setCheckbox(RECORD_CHECKBOX_ID, True)
+    #         #             controller.setEditTextValue(STORING_RECORD_PATH_EDIT_TEXT_ID, controller.storePath)
+    #         #         controller.sleep(1)
                     
-            #         if AdbUtils.isFileExists(deviceAudioFile, controller.d.serial):
-            #             controller.setCheckbox(PLAY_AUDIO_CHECKBOX_ID, True)
-            #             controller.setEditTextValue(PLAY_AUDIO_FILE_EDIT_TEXT_ID, deviceAudioFile)
-            #         controller.sleep(1)
+    #         #         if AdbUtils.isFileExists(deviceAudioFile, controller.d.serial):
+    #         #             controller.setCheckbox(PLAY_AUDIO_CHECKBOX_ID, True)
+    #         #             controller.setEditTextValue(PLAY_AUDIO_FILE_EDIT_TEXT_ID, deviceAudioFile)
+    #         #         controller.sleep(1)
 
-            #         controller.clickButton(MAKE_AUDIO_CALL_BTN_ID)
+    #         #         controller.clickButton(MAKE_AUDIO_CALL_BTN_ID)
 
-            #         controller.sleep(10)
-            #         controller.press("back")
-            #         controller.press("back")
+    #         #         controller.sleep(10)
+    #         #         controller.press("back")
+    #         #         controller.press("back")
             
-            controller.startEval([LOGIN_ACTIVITY, MAIN_ACTIVITY], timeout=5)
+    #         controller.startEval([LOGIN_ACTIVITY, MAIN_ACTIVITY], timeout=5)
             
-        except Exception as e:
-            print(e)
-            controller.stopApp()
+    #     except Exception as e:
+    #         print(e)
+    #         controller.stopApp()
+    print(AdbUtils.getDeviceIp())
