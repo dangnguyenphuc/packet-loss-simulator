@@ -65,6 +65,35 @@ button:focus-visible {
   text-align: center;
 }
 
+.CodeMirror {
+    height: auto;
+}
+.intro {
+    background-color: rgb(255, 143, 143);
+}
+.timer-container {
+    background-color: rgb(232, 207, 255);
+}
+.ip-selector {
+    background-color: rgb(255, 143, 165);
+}
+.ip-monitor {
+    background-color: rgb(252, 188, 220);
+}
+.config-container {
+    background-color: rgb(243, 237, 205);
+}
+.default-config-json {
+    background-color: rgb(191, 252, 252);
+}
+.title {
+    text-align: center;
+    font-size: 30px;
+}
+.defined-loss-strategy {
+    background-color: rgb(175, 241, 219);
+}
+
 @media (prefers-color-scheme: light) {
   :root {
     color: #213547;
