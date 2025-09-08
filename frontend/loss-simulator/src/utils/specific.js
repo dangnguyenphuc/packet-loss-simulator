@@ -25,6 +25,14 @@ export async function fetchJson(filename) {
     }
 }
 
+export async function fetchInfo() {
+    try {
+        return await axiosGet(`/api/info`);
+    } catch (err) {
+        throw new Error(`[GET] Failed to fetch audio: ${err.message}`);
+    }
+}
+
 export async function deleteShape(payload, endpoint = PROXY_ENDPOINT) {
     try {
         return await axiosDelete(endpoint, payload);

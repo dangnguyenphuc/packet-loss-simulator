@@ -2,8 +2,10 @@ NETWORK_ATC_SUBMASK_NET = "10.42.0.0/24"
 NETWORK_ATC_GATEWAY_IP = "http://10.42.0.1:8080"
 NETWORK_ATC_ENDPOINT = "/api/v1/shape/"
 
+STATIC_FOLDER = "static/"
 JSON_CONFIG_FOLDER = "main/static/main/json"
 LOSS_STRATEGIES_FOLDER = "main/static/main/json-loss-strategies"
+AUDIO_TYPE = ".wav"
 
 # =====================================================================
 # ========================== ANDROID Constants ========================
@@ -16,6 +18,8 @@ AUDIO_FILE = "audio.wav"
 ANDROID_DEMO_PATH = "demoapp"
 ANDROID_DOWNLOAD_PATH = "Download"
 ANDROID_DOCUMENTS_PATH = "Documents"
+
+ANDROID_HISTOGRAM_PATH = "ZrtcDemoLog/stats_call.log"
 
 PACKAGE = "com.vng.zing.vn.zrtc.demo"
 APP_PACKAGE = f"{PACKAGE}.debug"

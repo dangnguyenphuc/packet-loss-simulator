@@ -77,8 +77,8 @@ button:focus-visible {
 .device-selector {
     background-color: rgb(255, 143, 165);
 }
-.ip-monitor {
-    background-color: rgb(252, 188, 220);
+.test-info {
+    background-color: rgba(252, 188, 220, 0.4);
 }
 .config-container {
     background-color: rgb(243, 237, 205);

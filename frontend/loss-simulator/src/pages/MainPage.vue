@@ -32,16 +32,17 @@
 <script>
 import DeviceSelector from '../components/DeviceSelector.vue';
 import Guidance from '../components/Guidance.vue';
+import TestInfo from '../components/TestInfo.vue';
 import {GUIDE_TEXT} from '../constants/constant'
 
 export default {
     name: 'MainPage',
-    components: { DeviceSelector, Guidance },
+    components: { DeviceSelector, Guidance, TestInfo },
     data() {
         return {
             selectedDevice: '',
             selectedIp: '',
-            expanded: [0, 1],
+            expanded: [0, 1, 2],
             panels: [
                 // FIRST PANEL
                 {
@@ -74,15 +75,13 @@ export default {
 
                 // 3RD PANEL
                 {
-                    title: 'Path Selector',
+                    title: 'Auto test information',
                     value: 2,
                     key: 2,
-                    class: 'intro',
-                    component: 'Guidance',
+                    class: 'test-info',
+                    component: 'TestInfo',
                     props: {
-                        content: `+ Fix90: Fixed 90% packet loss rate
-+ Dynamic: Loss rate varies over time (each ... second)
-+ IncreaseOnly: Same as Dynamic but loss rate always increase`,
+                        
                     },
                     events: {},
                 },
@@ -114,7 +113,7 @@ export default {
 
 <style scoped>
 .main-container {
-    width: 1000px;
+    width: 1200px;
 }
 
 @media (max-width: 767) {

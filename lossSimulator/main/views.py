@@ -33,3 +33,22 @@ def getAllDevices(request):
 def getDeviceIps(request, deviceId):
     ips = AdbUtils.getDeviceIps(deviceId)
     return JsonResponse({"data": ips})
+
+def getInfo(request):
+        
+        appPath = AdbUtils.getAppPath()
+
+        return JsonResponse(
+        {
+            "pc":  
+            {
+                "audio": FileUtils.getAudioFiles(),
+                "recordFolder": FileUtils.getStaticFolder()
+            },
+            "android":
+            {
+                "uploadAudioFolder": appPath,
+                "recordAudioFoler": appPath,
+                "histogramStorePath": AdbUtils.getHistogramPath()
+            }
+        })

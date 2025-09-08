@@ -1,37 +1,30 @@
 <template>
-    <v-row class="device-selector pa-4">
-        <v-col cols="12" class="title">
-            <span>Device Selector</span>
+    <v-row class="pa-3" align="center" justify="center">
+        <v-col cols="12" md="6" class="d-flex align-center ga-3">
+            <v-row class="d-flex ga-3">
+                <v-col class="d-flex">
+                    <v-select
+                        label="Choose device"
+                        v-model="selectedDevice"
+                        :items="devices"
+                        :disabled="loadingDevices"
+                    ></v-select>
+                </v-col>
+                <v-col class="d-flex">
+                    <v-select
+                        label="Choose IP"
+                        v-model="selectedIp"
+                        :items="ips"
+                        :disabled="loadingIps"
+                        item-title="text"
+                        item-value="ip"
+                    ></v-select>
+                </v-col>
+            </v-row>    
         </v-col>
-        <v-col cols="12">
-            <v-row align="center" justify="center">
-                <v-col cols="12" md="6" class="d-flex align-center ga-3">
-                    <v-row class="d-flex ga-3">
-                        <v-col class="d-flex">
-                            <v-select
-                                label="Choose device"
-                                v-model="selectedDevice"
-                                :items="devices"
-                                :disabled="loadingDevices"
-                            ></v-select>
-                        </v-col>
-                        <v-col class="d-flex">
-                            <v-select
-                                label="Choose IP"
-                                v-model="selectedIp"
-                                :items="ips"
-                                :disabled="loadingIps"
-                                item-title="text"
-                                item-value="ip"
-                            ></v-select>
-                        </v-col>
-                    </v-row>    
-                </v-col>
-                <v-col cols="12" class="d-flex justify-center ga-3">
-                    <v-btn color="primary" @click="fetchDevicesData" :disabled="loadingDevices">Reload</v-btn>
-                    <v-btn color="error" @click="$emit('delete-config')">Delete Config</v-btn>
-                </v-col>
-            </v-row>
+        <v-col cols="12" class="d-flex justify-center ga-3">
+            <v-btn color="primary" @click="fetchDevicesData" :disabled="loadingDevices">Reload</v-btn>
+            <v-btn color="error" @click="$emit('delete-config')">Delete Config</v-btn>
         </v-col>
     </v-row>
 </template>

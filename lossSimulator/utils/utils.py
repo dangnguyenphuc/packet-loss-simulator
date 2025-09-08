@@ -104,6 +104,15 @@ class FileUtils:
             "endpoint": NETWORK_ATC_ENDPOINT
         }
     
+    @staticmethod
+    def getAudioFiles() -> list[str]:
+        paths = FileUtils.listFile(STATIC_FOLDER, AUDIO_TYPE)
+        return [os.path.abspath(path) for path in paths]
+    
+    @staticmethod
+    def getStaticFolder() -> str:
+        return os.path.abspath(STATIC_FOLDER)
+    
 class RequestUtils:
     @staticmethod
     def atcRequest(request: HttpRequest) -> JsonResponse:
@@ -380,6 +389,15 @@ class AdbUtils:
     @staticmethod
     def getDocumentPath(deviceId = None):
         return AdbUtils.getDefaultPath(deviceId) + "/" + ANDROID_DOCUMENTS_PATH
+
+    @staticmethod
+    def getAppPath(deviceId = None):
+        return AdbUtils.getDownloadsPath(deviceId) + "/" + ANDROID_DEMO_PATH
+
+    @staticmethod
+    def getHistogramPath(deviceId = None):
+        return AdbUtils.getDocumentPath(deviceId) + "/" + ANDROID_HISTOGRAM_PATH
+
 
     @staticmethod
     def getDefaultPath(deviceId = None):
