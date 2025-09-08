@@ -74,7 +74,7 @@ button:focus-visible {
 .timer-container {
     background-color: rgb(232, 207, 255);
 }
-.ip-selector {
+.device-selector {
     background-color: rgb(255, 143, 165);
 }
 .ip-monitor {

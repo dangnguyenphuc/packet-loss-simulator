@@ -27,7 +27,7 @@ def getJson(request, filename):
 
 def getAllDevices(request):
     allDevices = AdbUtils.getConnectedDevices()
-
+    print(allDevices)
     return JsonResponse({"data": allDevices})
 
 def getDeviceIps(request, deviceId):
