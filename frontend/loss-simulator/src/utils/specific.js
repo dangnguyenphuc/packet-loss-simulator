@@ -1,5 +1,5 @@
 import { axiosGet, axiosPost, axiosDelete } from './common.js';
-import { DEVICE_ENDPOINT, PROXY_ENDPOINT } from '../constants/api.js';
+import { DEVICE_ENDPOINT, PROXY_ENDPOINT, IP_ENDPOINT } from '../constants/api.js';
 
 export async function fetchDevices() {
     try {
@@ -11,7 +11,7 @@ export async function fetchDevices() {
 
 export async function fetchDeviceIp(device) {
     try {
-        return await axiosGet(`${DEVICE_ENDPOINT}/${device}/ip`);
+        return await axiosGet(`${IP_ENDPOINT}/${device}`);
     } catch (err) {
         throw new Error(`[GET] Failed to fetch device IPs: ${err.message}`);
     }
@@ -25,9 +25,11 @@ export async function fetchJson(filename) {
     }
 }
 
-export async function fetchInfo() {
+export async function fetchInfo(deviceId) {
     try {
-        return await axiosGet(`/api/info`);
+        return await axiosGet(`/api/info`, {
+            deviceId: deviceId
+        });
     } catch (err) {
         throw new Error(`[GET] Failed to fetch audio: ${err.message}`);
     }
