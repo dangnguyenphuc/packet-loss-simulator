@@ -1,7 +1,7 @@
 from django.shortcuts import render
 from django.http import HttpResponse, JsonResponse
 from django.http import HttpResponseNotFound
-from utils.utils import NetworkUtils, FileUtils, AdbUtils
+from utils.utils import NetworkUtils, FileUtils, AdbUtils, AudioUtils
 
 def index(request):
 
@@ -35,20 +35,23 @@ def getDeviceIps(request, deviceId):
     return JsonResponse({"data": ips})
 
 def getInfo(request):
-        
+        deviceId = request.GET.get("deviceId", None)
         appPath = AdbUtils.getAppPath()
+        zrtcDemoApp = AdbUtils.getZrtcDemoApp()
 
         return JsonResponse(
         {
             "pc":  
             {
-                "audio": FileUtils.getAudioFiles(),
+                "audio": AudioUtils.getAudioFileWithDurations(),
                 "recordFolder": FileUtils.getStaticFolder()
             },
             "android":
             {
                 "uploadAudioFolder": appPath,
-                "recordAudioFoler": appPath,
-                "histogramStorePath": AdbUtils.getHistogramPath()
+                "recordAudioFolder": appPath,
+                "histogramStorePath": AdbUtils.getHistogramPath(deviceId),
+                "appPackage": (zrtcDemoApp if AdbUtils.isContainZrtcDemoApp(deviceId) else ""),
+                "activity": AdbUtils.getZrtcDemoAppTargetActivities(deviceId)
             }
         })

@@ -87,7 +87,8 @@ export default {
                     this.selectedIp = this.ips[0].ip;
                 }
             } catch (err) {
-                alert(`[GET] Ips error: ${err.message}`);
+                console.log(err.message)
+                alert("[GET] Ips error");
             } finally {
                 this.loadingIps = false;
             }

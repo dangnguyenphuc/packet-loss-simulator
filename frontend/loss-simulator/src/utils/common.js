@@ -21,8 +21,10 @@ apiClient.interceptors.response.use(
     }
 );
 
-export async function axiosGet(url) {
-    const response = await apiClient.get(url);
+export async function axiosGet(url, params = {}) {
+    const response = await apiClient.get(url, {
+        params: params
+    });
     return response.data;
 }
 

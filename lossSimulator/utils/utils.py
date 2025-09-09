@@ -11,7 +11,20 @@ import subprocess
 import uiautomator2 as u2
 import subprocess
 from datetime import datetime
+import wave
 
+class AudioUtils:
+    def getAudioDuration(filePath: str) -> float:
+        with wave.open(filePath, "rb") as wavFile:
+            frames = wavFile.getnframes()
+            rate = wavFile.getframerate()
+            duration = frames / float(rate)
+        return round(duration, 2)
+
+    @staticmethod
+    def getAudioFileWithDurations() -> list[str]:
+        audioFiles = FileUtils.getAudioFiles();
+        return [ f"{file}-{AudioUtils.getAudioDuration(file)}" for file in audioFiles]
 class NetworkUtils:
     def getIp(request: HttpRequest) -> str:
         x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
@@ -67,11 +80,15 @@ class FileUtils:
 
         return False
     
-    def listFile(folderPath: str, type: str = "*") -> list[str]:
-        if (type == "*"):
-            return os.listdir(folderPath)
-
-        else: return [file for file in os.listdir(folderPath) if file.endswith(type)]
+    def listFile(folderPath, type="*"):
+        if type == "*":
+            return [os.path.abspath(os.path.join(folderPath, f)) for f in os.listdir(folderPath)]
+        else:
+            return [
+                os.path.abspath(os.path.join(folderPath, f))
+                for f in os.listdir(folderPath)
+                if f.endswith(type)
+            ]
     
     @staticmethod
     def copyFile(src: str, dst: str) -> bool:
@@ -440,3 +457,44 @@ class AdbUtils:
         except subprocess.CalledProcessError as e:
             print("Error running adb:", e)
             return []
+
+    @staticmethod
+    def isContainPackage(packageName: str , deviceId: str=None) -> bool:
+        try:
+            cmd = ["adb"]
+            if deviceId:
+                cmd += ["-s", deviceId]
+            cmd += ["shell", "pm", "list", "packages", "|", "grep", packageName]
+
+            result = subprocess.run(" ".join(cmd), shell=True, capture_output=True, text=True)
+            return packageName in result.stdout
+        except Exception as e:
+            return False
+        
+    @staticmethod
+    def isContainZrtcDemoApp(deviceId: str = None) -> bool:
+        return AdbUtils.isContainPackage(APP_PACKAGE)
+    
+    @staticmethod
+    def getZrtcDemoApp() -> str:
+        return APP_PACKAGE
+    
+    @staticmethod
+    def hasActivity(packageName, activityName, deviceId=None):
+        cmd = ["adb"]
+        if deviceId:
+            cmd += ["-s", deviceId]
+        cmd += [
+            "shell",
+            f"dumpsys package {packageName} | grep {activityName}"
+        ]
+
+        result = subprocess.run(" ".join(cmd), shell=True, capture_output=True, text=True)
+        return result.returncode == 0 and activityName in result.stdout
+
+    @staticmethod
+    def getZrtcDemoAppTargetActivities(deviceId=None) -> list[str]:
+        targetActivities = [LOGIN_ACTIVITY, MAIN_ACTIVITY]
+        zrtcDemoApp = AdbUtils.getZrtcDemoApp()
+        
+        return [act for act in targetActivities if AdbUtils.hasActivity(zrtcDemoApp, act, deviceId)]

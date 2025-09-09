@@ -19,7 +19,14 @@
                         <v-expansion-panel-text>
                             <component
                                 :is="panel.component"
-                                v-bind="panel.props"
+                                v-bind="
+                                { 
+                                    ...panel.props, 
+                                    ...(
+                                        panel.component === 'TestInfo' ? 
+                                        { deviceId: selectedDevice } : {}
+                                    ) 
+                                }"
                                 v-on="panel.events"
                             />
                         </v-expansion-panel-text>
@@ -81,7 +88,6 @@ export default {
                     class: 'test-info',
                     component: 'TestInfo',
                     props: {
-                        
                     },
                     events: {},
                 },
