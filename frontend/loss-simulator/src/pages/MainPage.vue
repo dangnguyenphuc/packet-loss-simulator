@@ -12,7 +12,7 @@
                     :value="panel.value"
                     :class="panel.class"
                 >
-                    <div v-if="panel.key < 2 || (selectedDevice && selectedIp)">
+                    <div v-if="panel.key < 10 || (selectedDevice && selectedIp)">
                         <v-expansion-panel-title>
                             <span class="title">{{ panel.title }}</span>
                         </v-expansion-panel-title>
@@ -40,11 +40,12 @@
 import DeviceSelector from '../components/DeviceSelector.vue';
 import Guidance from '../components/Guidance.vue';
 import TestInfo from '../components/TestInfo.vue';
+import AtcConfig from '../components/AtcConfig.vue';
 import {GUIDE_TEXT} from '../constants/constant'
 
 export default {
     name: 'MainPage',
-    components: { DeviceSelector, Guidance, TestInfo },
+    components: { DeviceSelector, Guidance, TestInfo, AtcConfig },
     data() {
         return {
             selectedDevice: '',
@@ -93,13 +94,13 @@ export default {
                 },
                 // 4RD PANEL
                 {
-                    title: 'How to use',
+                    title: 'Atc Configurations',
                     value: 3,
                     key: 3,
                     class: 'intro',
-                    component: 'Guidance',
+                    component: 'AtcConfig',
                     props: {
-                        content: GUIDE_TEXT,
+                        
                     },
                     events: {},
                 },
