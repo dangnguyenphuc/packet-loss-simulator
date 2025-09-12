@@ -19,6 +19,7 @@
                         <v-expansion-panel-text>
                             <component
                                 :is="panel.component"
+                                @open:Toast="openToast"
                                 v-bind="
                                 { 
                                     ...panel.props, 
@@ -40,12 +41,12 @@
 import DeviceSelector from '../components/DeviceSelector.vue';
 import Guidance from '../components/Guidance.vue';
 import TestInfo from '../components/TestInfo.vue';
-import AtcConfig from '../components/AtcConfig.vue';
-import {GUIDE_TEXT} from '../constants/constant'
+import AtcConfigMultiple from '../components/AtcConfig/AtcConfigMultiple.vue';
+import {GUIDE_TEXT, EVENT_OPEN_TOAST, TOAST_TIMEOUT} from '../constants/constant'
 
 export default {
     name: 'MainPage',
-    components: { DeviceSelector, Guidance, TestInfo, AtcConfig },
+    components: { DeviceSelector, Guidance, TestInfo, AtcConfigMultiple },
     data() {
         return {
             selectedDevice: '',
@@ -76,8 +77,8 @@ export default {
                         ip: '',
                     },
                     events: {
-                        'update:device': this.handleFetchDevice,
-                        'update:deviceIp': this.handleFetchDeviceIp,
+                        EVENT_UPDATE_DEVICE: this.handleFetchDevice,
+                        EVENT_UPDATE_DEVICE_IP: this.handleFetchDeviceIp,
                     },
                 },
 
@@ -97,8 +98,8 @@ export default {
                     title: 'Atc Configurations',
                     value: 3,
                     key: 3,
-                    class: 'intro',
-                    component: 'AtcConfig',
+                    class: 'config-container',
+                    component: 'AtcConfigMultiple',
                     props: {
                         
                     },
@@ -114,6 +115,9 @@ export default {
         handleFetchDeviceIp(value) {
             this.selectedIp = value;
         },
+        openToast(header="", message="", timeout=TOAST_TIMEOUT) {
+            this.$emit(EVENT_OPEN_TOAST, header, message, timeout);
+        }
     },
 };
 </script>

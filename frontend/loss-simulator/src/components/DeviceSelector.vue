@@ -32,6 +32,11 @@
 <script>
 import { ref, watch } from 'vue';
 import { fetchDevices, fetchDeviceIp } from '../utils/specific.js';
+import { 
+    EVENT_OPEN_TOAST,
+    EVENT_UPDATE_DEVICE,
+    EVENT_UPDATE_DEVICE_IP
+ } from '../constants/constant.js';
 
 export default {
     name: 'DeviceSelector',
@@ -58,7 +63,7 @@ export default {
                 this.devices = data;
                 if (data.length > 0 && !this.selectedDevice) {
                     this.selectedDevice = data[0];
-                    this.$emit('update:device', this.selectedDevice);
+                    this.$emit(EVENT_UPDATE_DEVICE, this.selectedDevice);
                 }
                 else {
                     this.selectedDevice = "";
@@ -66,6 +71,11 @@ export default {
                     this.ips = [];
                 }
             } catch (err) {
+                this.$emit(
+                    EVENT_OPEN_TOAST, 
+                    "Get devices failed",
+                    "Error: " + err.message
+                );
             } finally {
                 this.loadingDevices = false;
             }
@@ -88,7 +98,11 @@ export default {
                 }
             } catch (err) {
                 console.log(err.message)
-                alert("[GET] Ips error");
+                this.$emit(
+                    EVENT_OPEN_TOAST, 
+                    "Get device IP failed",
+                    "Error: " + err.message
+                );
             } finally {
                 this.loadingIps = false;
             }
@@ -99,7 +113,7 @@ export default {
             this.fetchDeviceIps(newVal);
         },
         selectedIp(newVal) {
-            this.$emit('update:deviceIp', newVal);
+            this.$emit(EVENT_UPDATE_DEVICE_IP, newVal);
         },
     },
     created() {
