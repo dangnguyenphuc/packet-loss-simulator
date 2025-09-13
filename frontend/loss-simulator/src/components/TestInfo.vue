@@ -5,59 +5,22 @@
                 <v-row class="d-flex justify-center align-center">
                     <span>PC Info</span>
                 </v-row>
-                <v-row
-                    v-for="field in infoFieldsPC"
-                    :key="field.title"
-                    class="d-flex flex-row info-pc-row align-center"
-                >
-                    <!-- Title column -->
-                    <v-col cols="2" class="d-flex justify-start align-center">
-                        <span>{{ field.title }}</span>
-                    </v-col>
+                <v-row v-for="field in infoFieldsPC" :key="field.title"
+                    class="d-flex info-pc-row justify-center align-center rounded-pill pa-4">
+                    <v-col class="justify-center align-center">
+                        <v-row class="d-flex justify-center align-center">
+                            <span>{{ field.title }}</span>
+                        </v-row>
 
-                    <!-- Data column -->
-                    <v-col class="d-flex flex-column justify-center">
-                        <template v-if="Array.isArray(field.data) && field.data.length > 0">
-                            
-                            <template v-if="field.title === 'Audio File'">
-                                <v-row v-for="(d, i) in field.data" :key="i">
-                                   <v-col cols="9">
-                                        <v-text-field
-                                            :model-value="d.substring(0, d.lastIndexOf('-'))"
-                                            readonly
-                                            density="compact"
-                                        />
-                                   </v-col>
-
-                                   <v-col class="d-flex justify-center align-center">
-                                       <v-text-field
-                                           :model-value="d.substring(d.lastIndexOf('-') + 1)"
-                                           readonly
-                                           density="compact"
-                                       />
-                                       <span>
-                                           s
-                                       </span>
-                                   </v-col> 
-                                </v-row>
+                        <v-row class="d-flex flex-column gap-2">
+                            <template v-if="Array.isArray(field.data) && field.data.length > 0">
+                                <v-text-field v-for="(d, i) in field.data" :key="i" :model-value="d" readonly
+                                    density="compact" />
                             </template>
                             <template v-else>
-                                <v-text-field
-                                    v-for="(d, i) in field.data"
-                                    :key="i"
-                                    :model-value="d"
-                                    readonly
-                                    density="compact"
-                                />
+                                <v-text-field :model-value="field.data" readonly density="compact" />
                             </template>
-                        </template>
-                        <template v-else>
-                            <v-text-field
-                                :model-value="field.data"
-                                readonly
-                                density="compact"
-                            />
-                        </template>
+                        </v-row>
                     </v-col>
                 </v-row>
             </v-col>
@@ -66,34 +29,22 @@
                 <v-row class="d-flex justify-center align-center">
                     <span>Android Info</span>
                 </v-row>
-                <v-row
-                    v-for="field in infoFieldsAndroid"
-                    :key="field.title"
-                    class="d-flex flex-row info-row align-center"
-                >
-                    <!-- Title column -->
-                    <v-col cols="2" class="d-flex justify-start align-center">
-                        <span>{{ field.title }}</span>
-                    </v-col>
+                <v-row v-for="field in infoFieldsAndroid" :key="field.title"
+                    class="d-flex info-row justify-center align-center rounded-pill pa-4">
+                    <v-col class="justify-center align-center">
+                        <v-row class="d-flex justify-center align-center">
+                            <span>{{ field.title }}</span>
+                        </v-row>
 
-                    <!-- Data column -->
-                    <v-col class="d-flex flex-column gap-2">
-                        <template v-if="Array.isArray(field.data) && field.data.length > 0">
-                            <v-text-field
-                                v-for="(d, i) in field.data"
-                                :key="i"
-                                :model-value="d"
-                                readonly
-                                density="compact"
-                            />
-                        </template>
-                        <template v-else>
-                            <v-text-field
-                                :model-value="field.data"
-                                readonly
-                                density="compact"
-                            />
-                        </template>
+                        <v-row class="d-flex flex-column gap-2">
+                            <template v-if="Array.isArray(field.data) && field.data.length > 0">
+                                <v-text-field v-for="(d, i) in field.data" :key="i" :model-value="d" readonly
+                                    density="compact" />
+                            </template>
+                            <template v-else>
+                                <v-text-field :model-value="field.data" readonly density="compact" />
+                            </template>
+                        </v-row>
                     </v-col>
                 </v-row>
             </v-col>
@@ -103,6 +54,7 @@
 
 <script>
 import { fetchInfo } from '../utils/specific';
+import { EVENT_OPEN_TOAST } from '../constants/constant'
 
 export default {
     name: 'TestInfo',
@@ -161,7 +113,7 @@ export default {
                 this.infoFieldsAndroid[3].data = info.android.appPackage;
                 this.infoFieldsAndroid[4].data = info.android.activity;
             } catch (err) {
-                console.error('Error fetching test info:', err.message);
+                this.$emit(EVENT_OPEN_TOAST, "Get Info error", err.message);
             }
         },
     },
@@ -180,6 +132,7 @@ export default {
 .info-row {
     background-color: rgb(227, 198, 255);
 }
+
 .info-pc-row {
     background-color: rgb(238, 223, 232);
 }

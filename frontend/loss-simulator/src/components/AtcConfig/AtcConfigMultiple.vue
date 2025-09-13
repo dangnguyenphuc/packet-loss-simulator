@@ -52,8 +52,7 @@
     <!-- Control Buttons -->
     <v-row class="mt-4">
       <v-col>
-        <v-btn color="primary" @click="runTestsSequential">Run Sequential</v-btn>
-        <v-btn color="secondary" class="ml-2" @click="runTestsParallel">Run Parallel</v-btn>
+        <v-btn color="primary" @click="runTestsSequential">Run</v-btn>
         <v-btn color="red" variant="tonal" class="ml-2" @click="resetTests">
           Reset
         </v-btn>
@@ -70,7 +69,7 @@ export default {
   components: { AtcConfig },
   data() {
     return {
-      numTests: "1", // keep as string because of text input
+      numTests: "1",
       configs: [],
       expanded: [],
     };
@@ -89,7 +88,7 @@ export default {
     generateConfigs() {
       const count = parseInt(this.numTests, 10) || 0;
       this.configs = Array.from({ length: count }, () => ({
-        status: "pending", // pending | testing | pass | fail
+        status: "pending",
       }));
       this.expanded = this.configs.map((_, i) => i);
     },
@@ -101,16 +100,6 @@ export default {
         const didPass = Math.random() > 0.4;
         this.configs[i] = { ...this.configs[i], status: didPass ? "pass" : "fail" };
       }
-    },
-
-    runTestsParallel() {
-      this.configs.forEach((_, i) => {
-        this.configs[i] = { ...this.configs[i], status: "testing" };
-        setTimeout(() => {
-          const didPass = Math.random() > 0.4;
-          this.configs[i] = { ...this.configs[i], status: didPass ? "pass" : "fail" };
-        }, 2000 + i * 500);
-      });
     },
 
     resetTests() {
