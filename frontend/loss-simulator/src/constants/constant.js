@@ -10,6 +10,7 @@ export const TOAST_TIMEOUT = 3000;
 Emit events: -----------
 \\\\\\\\\\\\\\\\\\\\\\\\
 */
+export const EVENT_UPDATE_MODEL = "update:modelValue";
 
 export const EVENT_OPEN_TOAST = "open:Toast";
 export const EVENT_CLOSE_TOAST = "close:Toast";

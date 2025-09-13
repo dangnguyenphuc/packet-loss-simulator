@@ -1,6 +1,6 @@
 <template>
     <v-card>
-        <v-card-text >
+        <v-card-text>
             <codemirror
                 v-model="code"
                 class="editor"
@@ -33,7 +33,7 @@ export default {
         return {
             code: this.modelValue,
             extensions: [
-                this.lang === "json" ? json() : null,  // Fixed: Compare to string "json"
+                this.lang === "json" ? json() : null,
             ],
         }
     },
@@ -43,7 +43,7 @@ export default {
 
     watch: {
         code(newValue) {
-            this.$emit('update:modelValue', newValue);
+            this.$emit(EVENT_UPDATE_MODEL, newValue);
         },
         modelValue(newValue) {
             if (newValue !== this.code) {
@@ -61,7 +61,9 @@ export default {
 }
 
 .editor {
-    height: 100%;
+    height: 200px;
     width: 100%;
 }
+
+
 </style>
