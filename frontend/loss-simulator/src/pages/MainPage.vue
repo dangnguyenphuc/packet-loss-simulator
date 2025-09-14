@@ -41,12 +41,13 @@
 import DeviceSelector from '../components/DeviceSelector.vue';
 import Guidance from '../components/Guidance.vue';
 import TestInfo from '../components/TestInfo.vue';
-import AtcConfigMultiple from '../components/AtcConfig/AtcConfigMultiple.vue';
+import ConfigAndRun from '../components/AtcConfig/ConfigAndRun.vue';
 import {GUIDE_TEXT, EVENT_OPEN_TOAST, TOAST_TIMEOUT} from '../constants/constant'
+import Result from '../components/AtcConfig/Result.vue';
 
 export default {
     name: 'MainPage',
-    components: { DeviceSelector, Guidance, TestInfo, AtcConfigMultiple },
+    components: { DeviceSelector, Guidance, TestInfo, ConfigAndRun },
     data() {
         return {
             selectedDevice: '',
@@ -93,18 +94,18 @@ export default {
                     },
                     events: {},
                 },
-                // 4RD PANEL
+                // 4ND PANEL
                 {
-                    title: 'Atc Configurations',
+                    title: 'Config ATC and Run Tests',
                     value: 3,
                     key: 3,
                     class: 'config-container',
-                    component: 'AtcConfigMultiple',
+                    component: 'ConfigAndRun',
                     props: {
                         
                     },
                     events: {},
-                },
+                }
             ],
         };
     },

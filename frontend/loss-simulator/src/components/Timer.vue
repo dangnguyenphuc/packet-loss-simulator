@@ -1,31 +1,30 @@
 <template>
-    <v-row class="timer-container pa-4">
-        <v-col cols="12" class="title">
-            <span>Timer</span>
-        </v-col>
+    <v-row>
         <v-col cols="12" class="d-flex align-center justify-center ga-3">
-            <span>Time to apply config:</span>
             <v-text-field
                 type="number"
-                v-model="hours"
+                v-model="hour"
                 :min="0"
-                style="width: 60px"
+                class="timer-input-field"
+                hide-details
             ></v-text-field>
             <span>:</span>
             <v-text-field
                 type="number"
-                v-model="minutes"
+                v-model="minute"
                 :min="0"
                 :max="59"
-                style="width: 60px"
+                hide-details
+                class="timer-input-field"
             ></v-text-field>
             <span>:</span>
             <v-text-field
                 type="number"
-                v-model="seconds"
+                v-model="second"
                 :min="0"
                 :max="59"
-                style="width: 60px"
+                hide-details
+                class="timer-input-field"
             ></v-text-field>
         </v-col>
     </v-row>
@@ -37,21 +36,27 @@ import { ref, watch } from 'vue';
 export default {
     name: 'Timer',
     props: {
-        hours: Number,
-        minutes: Number,
-        seconds: Number,
+        hour: Number,
+        minute: Number,
+        second: Number,
     },
-    emits: ['update:hours', 'update:minutes', 'update:seconds'],
+    emits: ['update:hour', 'update:minute', 'update:second'],
     setup(props, { emit }) {
-        const hours = ref(props.hours);
-        const minutes = ref(props.minutes);
-        const seconds = ref(props.seconds);
+        const hour = ref(props.hour);
+        const minute = ref(props.minute);
+        const second = ref(props.second);
 
-        watch(hours, (newVal) => emit('update:hours', parseInt(newVal) || 0));
-        watch(minutes, (newVal) => emit('update:minutes', parseInt(newVal) || 0));
-        watch(seconds, (newVal) => emit('update:seconds', parseInt(newVal) || 0));
+        watch(hour, (newVal) => emit('update:hour', parseInt(newVal) || 0));
+        watch(minute, (newVal) => emit('update:minute', parseInt(newVal) || 0));
+        watch(second, (newVal) => emit('update:second', parseInt(newVal) || 0));
 
-        return { hours, minutes, seconds };
+        return { hour, minute, second };
     },
 };
 </script>
+
+<style scoped>
+.timer-input-field {
+    width: 60px;
+}
+</style>

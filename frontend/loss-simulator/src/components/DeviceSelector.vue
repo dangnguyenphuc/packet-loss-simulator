@@ -8,6 +8,7 @@
                         v-model="selectedDevice"
                         :items="devices"
                         :disabled="loadingDevices"
+                        hide-details
                     ></v-select>
                 </v-col>
                 <v-col class="d-flex">
@@ -18,6 +19,7 @@
                         :disabled="loadingIps"
                         item-title="text"
                         item-value="ip"
+                        hide-details
                     ></v-select>
                 </v-col>
             </v-row>    
