@@ -11,19 +11,22 @@
 
       <!-- Success -->
       <template v-else-if="result.status === RES_STATUS.SUCCESS">
-        <v-col cols="3">
-          <v-select
+        <v-col>
+          <v-list>
+            <v-list-item v-for="audioFile in result.audioFiles" :key="audioFile">{{ audioFile }}</v-list-item>
+          </v-list>
+          <!-- <v-select
             v-model="result.selectedAudio"
             :items="result.audioFiles"
             label="Audio Files"
             dense
             @update:model-value="onAudioChange"
             hide-details
-          />
+          /> -->
         </v-col>
 
         <!-- Play / Stop -->
-        <v-col cols="2" class="d-flex align-center ga-2">
+        <!-- <v-col cols="2" class="d-flex align-center ga-2">
           <v-btn
             icon="mdi-play"
             color="primary"
@@ -36,10 +39,10 @@
             density="compact"
             @click="stopAudio"
           />
-        </v-col>
+        </v-col> -->
 
         <!-- Log file -->
-        <v-col cols="4">
+        <v-col>
           <v-text-field
             v-model="result.logFile"
             label="Log File"
@@ -47,14 +50,14 @@
             dense
             hide-details
           />
-          <v-btn
+          <!-- <v-btn
             density="compact"
             prepend-icon="mdi-open-in-app"
             class="mt-1"
             @click="openLog(result.logFile)"
           >
             Open Log
-          </v-btn>
+          </v-btn> -->
         </v-col>
       </template>
     </v-row>

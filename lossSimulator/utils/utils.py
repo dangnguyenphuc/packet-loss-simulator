@@ -5,15 +5,14 @@ import json
 from json.decoder import JSONDecodeError
 import requests
 from .constants import *
-import random
 import shutil
-import subprocess
-import uiautomator2 as u2
 import subprocess
 from datetime import datetime
 import wave
-import time
-
+class DateTimeUtils:
+    @staticmethod
+    def getTimestamped():
+        return datetime.now().strftime("%d-%m-%Y_%H%M%S")
 class AudioUtils:
     def getAudioDuration(filePath: str) -> float:
         with wave.open(filePath, "rb") as wavFile:
@@ -123,8 +122,13 @@ class FileUtils:
         }
     
     @staticmethod
-    def getAudioFiles() -> list[str]:
-        paths = FileUtils.listFile(STATIC_FOLDER, AUDIO_TYPE)
+    def getAudioFiles(audioPath=STATIC_FOLDER) -> list[str]:
+        paths = FileUtils.listFile(audioPath, AUDIO_TYPE)
+        return [os.path.abspath(path) for path in paths]
+    
+    @staticmethod
+    def getLogFiles(logPath=STATIC_FOLDER) -> list[str]:
+        paths = FileUtils.listFile(logPath, LOG_TYPE)
         return [os.path.abspath(path) for path in paths]
     
     @staticmethod

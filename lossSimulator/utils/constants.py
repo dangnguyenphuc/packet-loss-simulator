@@ -1,3 +1,5 @@
+from enum import Enum
+
 NETWORK_ATC_SUBMASK_NET = "10.42.0.0/24"
 NETWORK_ATC_GATEWAY_IP = "http://10.42.0.1:8080"
 NETWORK_ATC_ENDPOINT = "/api/v1/shape/"
@@ -7,12 +9,24 @@ STATIC_FOLDER = "static/"
 JSON_CONFIG_FOLDER = "main/static/main/json"
 LOSS_STRATEGIES_FOLDER = "main/static/main/json-loss-strategies"
 AUDIO_TYPE = ".wav"
+LOG_TYPE = ".log"
 
 # =====================================================================
 # ========================== ANDROID Constants ========================
 # =====================================================================
 DEFAULT_TIMEOUT = 5
 DEFAULT_EVAL_TIMEOUT = 30
+
+class CALL_OPTION(Enum):
+    LOOPBACK_SERVER = 0
+    SERVER = 1
+    LOOPBACK_LOCAL = 2
+
+class CALL_MODE:
+    AUDIO = "audio"
+    VIDEO = "video"
+    GROUP = "group"
+
 
 DESKTOP_STATIC_FOLDER = "../static/"
 AUDIO_FILE = "audio.wav"
