@@ -12,6 +12,7 @@ import uiautomator2 as u2
 import subprocess
 from datetime import datetime
 import wave
+import time
 
 class AudioUtils:
     def getAudioDuration(filePath: str) -> float:
@@ -185,63 +186,6 @@ class RequestUtils:
         endpoint = NETWORK_ATC_GATEWAY_IP + NETWORK_ATC_ENDPOINT + requestData['ip'] + "/"
 
         if request.method == 'POST':
-            if 'strategy' in requestData:
-                strate = requestData['strategy']
-                if not strate in FileUtils.listAllLossStrategyFiles():
-                    return JsonResponse(
-                        {
-                            "error": f"Invalid strategy '{strate}'"
-                        },
-                        status=400
-                    )
-
-                shapeData = FileUtils.getJsonContent(strate, LOSS_STRATEGIES_FOLDER)
-                curLoss = shapeData["down"]["loss"]["percentage"]
-                loss = random.randint(0,100)
-                
-                match strate.split(".")[0]:
-                    case "fix90":
-                        loss = 90
-                    case "dynamic":
-                        shapeData["down"]["loss"]["percentage"] = loss
-                    case "increaseOnly":
-                        if loss >= curLoss:
-                            shapeData["down"]["loss"]["percentage"] = loss
-                            FileUtils.saveJsonFile(shapeData, strate, LOSS_STRATEGIES_FOLDER)
-                    case _:
-                        return JsonResponse({
-                            "error": f"Strategy '{strate}' is not implemented"
-                        }, status=400)
-                
-                try:
-                    response = requests.post(
-                        endpoint,
-                        headers={"Content-Type": "application/json"},
-                        json=shapeData
-                    )
-
-                    if strate.startswith("increase"):
-                        return JsonResponse(
-                            {
-                                "status": response.status_code,
-                                "loss": loss if loss >= curLoss else curLoss
-                            },
-                            status=response.status_code
-                        )
-
-                    return JsonResponse(
-                        {
-                            "status": response.status_code,
-                            "loss": loss
-                        },
-                        status=response.status_code
-                    )
-                except Exception as e:
-                    return JsonResponse({"error": str(e)}, status=500)
-
-
-
-
             if 'data' not in requestData:
                 return JsonResponse(
                     {
@@ -249,16 +193,22 @@ class RequestUtils:
                     },
                     status=400
                 )
+            
             headers = {
                 "Content-Type": "application/json"
             }
-            
+
             try:
-                response = requests.post(
-                    endpoint,
-                    headers=headers,
-                    json=requestData['data']
-                )    
+                statusCode = 1
+                retryTime = NETWORK_ATC_MAX_RETRY
+                while statusCode//200 != 1 and retryTime > 0:
+                    response = requests.post(
+                        endpoint,
+                        headers=headers,
+                        json=requestData['data']
+                    ) 
+                    statusCode = response.status_code
+                    retryTime -= 1 
                 return JsonResponse(
                     {
                         "status": response.status_code,
@@ -270,13 +220,6 @@ class RequestUtils:
                 return JsonResponse({"error": str(e)}, status=500)
 
         elif request.method == 'DELETE':
-            
-            # reset increaseOnly no matter what
-            FileUtils.copyFile(
-                os.path.join(LOSS_STRATEGIES_FOLDER, "dynamic.json"),
-                os.path.join(LOSS_STRATEGIES_FOLDER, "increaseOnly.json")
-            )
-
             try:
                 response = requests.delete(
                     endpoint

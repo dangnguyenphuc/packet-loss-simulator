@@ -1,3 +1,4 @@
+export const JSON_ENDPOINT = '/api/json';
 export const DEVICE_ENDPOINT = '/api/devices';
 export const IP_ENDPOINT = '/api/ip';
 export const PROXY_ENDPOINT = '/api/proxy/shape';

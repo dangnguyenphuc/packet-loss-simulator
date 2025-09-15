@@ -5,35 +5,28 @@
                 <h1>Hello, User!</h1>
             </v-col>
         </v-row>
-            <v-expansion-panels v-model="expanded" multiple>
-                <v-expansion-panel
-                    v-for="panel in panels"
-                    :key="panel.key"
-                    :value="panel.value"
-                    :class="panel.class"
-                >
-                    <div v-if="panel.key < 10 || (selectedDevice && selectedIp)">
-                        <v-expansion-panel-title>
-                            <span class="title">{{ panel.title }}</span>
-                        </v-expansion-panel-title>
-                        <v-expansion-panel-text>
-                            <component
-                                :is="panel.component"
-                                @open:Toast="openToast"
-                                v-bind="
-                                { 
-                                    ...panel.props, 
-                                    ...(
-                                        panel.component === 'TestInfo' ? 
-                                        { deviceId: selectedDevice } : {}
-                                    ) 
-                                }"
-                                v-on="panel.events"
-                            />
-                        </v-expansion-panel-text>
-                    </div>
-                </v-expansion-panel>
-            </v-expansion-panels>
+        <v-expansion-panels v-model="expanded" multiple>
+            <v-expansion-panel
+                v-for="panel in panels"
+                :key="panel.key"
+                :value="panel.value"
+                :class="panel.class"
+            >
+                <div v-if="panel.key < 10 || (selectedDevice && selectedIp)">
+                    <v-expansion-panel-title>
+                        <span class="title">{{ panel.title }}</span>
+                    </v-expansion-panel-title>
+                    <v-expansion-panel-text>
+                        <component
+                            :is="panel.component"
+                            @open:Toast="openToast"
+                            v-bind="panel.props"
+                            v-on="panel.events"
+                        />
+                    </v-expansion-panel-text>
+                </div>
+            </v-expansion-panel>
+        </v-expansion-panels>
     </v-container>
 </template>
 
@@ -42,8 +35,15 @@ import DeviceSelector from '../components/DeviceSelector.vue';
 import Guidance from '../components/Guidance.vue';
 import TestInfo from '../components/TestInfo.vue';
 import ConfigAndRun from '../components/AtcConfig/ConfigAndRun.vue';
-import {GUIDE_TEXT, EVENT_OPEN_TOAST, TOAST_TIMEOUT} from '../constants/constant'
-import Result from '../components/AtcConfig/Result.vue';
+import {
+    GUIDE_TEXT, 
+    EVENT_OPEN_TOAST, 
+    TOAST_TIMEOUT,
+    EVENT_UPDATE_DEVICE,
+    EVENT_UPDATE_DEVICE_IP,
+    EVENT_FETCH_DEVICE
+} from '../constants/constant';
+import { fetchJsons } from '../utils/specific';
 
 export default {
     name: 'MainPage',
@@ -52,7 +52,7 @@ export default {
         return {
             selectedDevice: '',
             selectedIp: '',
-            expanded: [0, 1, 2],
+            expanded: [1, 2, 3],
             panels: [
                 // FIRST PANEL
                 {
@@ -73,16 +73,13 @@ export default {
                     key: 1,
                     class: 'device-selector',
                     component: 'DeviceSelector',
-                    props: {
-                        device: '',
-                        ip: '',
-                    },
+                    props: {},
                     events: {
-                        EVENT_UPDATE_DEVICE: this.handleFetchDevice,
-                        EVENT_UPDATE_DEVICE_IP: this.handleFetchDeviceIp,
+                        [EVENT_UPDATE_DEVICE]: this.handleFetchDevice,
+                        [EVENT_UPDATE_DEVICE_IP]: this.handleFetchDeviceIp,
+                        [EVENT_FETCH_DEVICE]: this.handleCompletedFetchDevice
                     },
                 },
-
                 // 3RD PANEL
                 {
                     title: 'Auto test information',
@@ -91,10 +88,12 @@ export default {
                     class: 'test-info',
                     component: 'TestInfo',
                     props: {
+                        display: false,
+                        deviceId: '',
                     },
                     events: {},
                 },
-                // 4ND PANEL
+                // 4TH PANEL
                 {
                     title: 'Config ATC and Run Tests',
                     value: 3,
@@ -102,7 +101,10 @@ export default {
                     class: 'config-container',
                     component: 'ConfigAndRun',
                     props: {
-                        
+                        display: false,
+                        atcConfigs: [],
+                        deviceId: "",
+                        deviceIp: ""
                     },
                     events: {},
                 }
@@ -112,13 +114,31 @@ export default {
     methods: {
         handleFetchDevice(value) {
             this.selectedDevice = value;
+            this.panels[2].props.deviceId = value;
         },
         handleFetchDeviceIp(value) {
             this.selectedIp = value;
         },
-        openToast(header="", message="", timeout=TOAST_TIMEOUT) {
+        async handleCompletedFetchDevice(value) {
+            // display all other panels
+            for (let i = 2; i < this.panels.length; i+=1) {
+                this.panels[i].props.display = value;
+            }
+
+            // fetch defined ATC Configs
+            try {
+                const atcConfigSelections = await fetchJsons();
+                if (!atcConfigSelections.hasOwnProperty("files")) throw new Error("Response ATC Configs doesn't have \"files\" field")
+                this.panels[3].props.atcConfigs = atcConfigSelections.files;
+                this.panels[3].props.deviceId = this.selectedDevice;
+                this.panels[3].props.deviceIp = this.selectedIp;
+            } catch (err) {
+                openToast("Error Getting ATC Configs file", err.message);
+            }
+        },
+        openToast(header = "", message = "", timeout = TOAST_TIMEOUT) {
             this.$emit(EVENT_OPEN_TOAST, header, message, timeout);
-        }
+        },
     },
 };
 </script>

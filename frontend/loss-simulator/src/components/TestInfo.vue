@@ -1,5 +1,5 @@
 <template>
-    <div class="test-info-container">
+    <div v-if="display" class="test-info-container">
         <v-row class="pa-4 d-flex flex-auto ga-2" align="center" justify="center" gap="3">
             <v-col class="d-flex ga-2 flex-column">
                 <v-row class="d-flex justify-center align-center">
@@ -50,6 +50,7 @@
             </v-col>
         </v-row>
     </div>
+    
 </template>
 
 <script>
@@ -59,6 +60,9 @@ import { EVENT_OPEN_TOAST } from '../constants/constant'
 export default {
     name: 'TestInfo',
     props: {
+        display: {
+            required: true,
+        },
         deviceId: {
             type: String,
             default: '',
@@ -121,10 +125,10 @@ export default {
         deviceId(newVal) {
             this.fetchTestInfo();
         },
-    },
-    mounted() {
-        this.fetchTestInfo();
-    },
+        display(newVal) {
+            if (newVal) this.fetchTestInfo();
+        }
+    }
 };
 </script>
 

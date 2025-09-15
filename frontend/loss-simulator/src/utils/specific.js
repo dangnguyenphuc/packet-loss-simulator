@@ -1,5 +1,10 @@
 import { axiosGet, axiosPost, axiosDelete } from './common.js';
-import { DEVICE_ENDPOINT, PROXY_ENDPOINT, IP_ENDPOINT } from '../constants/api.js';
+import { 
+    DEVICE_ENDPOINT, 
+    PROXY_ENDPOINT, 
+    IP_ENDPOINT,
+    JSON_ENDPOINT
+} from '../constants/api.js';
 
 export async function fetchDevices() {
     try {
@@ -17,9 +22,17 @@ export async function fetchDeviceIp(device) {
     }
 }
 
-export async function fetchJson(filename) {
+export async function fetchJsons() {
     try {
-        return await axiosGet(`/api/json/${filename}`);
+        return await axiosGet(`${JSON_ENDPOINT}`);
+    } catch (err) {
+        throw new Error(`[GET] Failed to fetch JSON files: ${err.message}`);
+    }
+}
+
+export async function fetchJsonContent(filename) {
+    try {
+        return await axiosGet(`${JSON_ENDPOINT}/${filename}`);
     } catch (err) {
         throw new Error(`[GET] Failed to fetch ${filename}: ${err.message}`);
     }
