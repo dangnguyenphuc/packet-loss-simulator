@@ -1,50 +1,46 @@
 {
-    "content": {
-        "down": {
-            "corruption": {
-                "correlation": 0,
-                "percentage": 0
-            },
-            "delay": {
-                "correlation": 0,
-                "delay": "650",
-                "jitter": 0
-            },
-            "iptables_options": [],
-            "loss": {
-                "correlation": 0,
-                "percentage": 0
-            },
-            "rate": "35",
-            "reorder": {
-                "correlation": 0,
-                "gap": 0,
-                "percentage": 0
-            }
+    "down": {
+        "corruption": {
+            "correlation": 0,
+            "percentage": 0
         },
-        "up": {
-            "corruption": {
-                "correlation": 0,
-                "percentage": 0
-            },
-            "delay": {
-                "correlation": 0,
-                "delay": "650",
-                "jitter": 0
-            },
-            "iptables_options": [],
-            "loss": {
-                "correlation": 0,
-                "percentage": 0
-            },
-            "rate": "32",
-            "reorder": {
-                "correlation": 0,
-                "gap": 0,
-                "percentage": 0
-            }
+        "delay": {
+            "correlation": 0,
+            "delay": "650",
+            "jitter": 0
+        },
+        "iptables_options": [],
+        "loss": {
+            "correlation": 0,
+            "percentage": 0
+        },
+        "rate": "35",
+        "reorder": {
+            "correlation": 0,
+            "gap": 0,
+            "percentage": 0
         }
     },
-    "id": 5,
-    "name": "2G - Developing Urban"
+    "up": {
+        "corruption": {
+            "correlation": 0,
+            "percentage": 0
+        },
+        "delay": {
+            "correlation": 0,
+            "delay": "650",
+            "jitter": 0
+        },
+        "iptables_options": [],
+        "loss": {
+            "correlation": 0,
+            "percentage": 0
+        },
+        "rate": "32",
+        "reorder": {
+            "correlation": 0,
+            "gap": 0,
+            "percentage": 0
+        }
+    }
 }

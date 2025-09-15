@@ -1,6 +1,6 @@
 <template>
     <v-row class="pa-3" align="center" justify="center">
-        <v-col cols="12" md="6" class="d-flex align-center ga-3">
+        <v-col class="d-flex align-center ga-3">
             <v-row class="d-flex ga-3">
                 <v-col class="d-flex">
                     <v-select
@@ -22,11 +22,10 @@
                         hide-details
                     ></v-select>
                 </v-col>
+                <v-col cols="1" class="d-flex justify-center align-center">
+                    <v-btn color="primary" icon="mdi-restart" @click="fetchDevicesData" :disabled="loadingDevices"></v-btn>
+                </v-col>
             </v-row>    
-        </v-col>
-        <v-col cols="12" class="d-flex justify-center ga-3">
-            <v-btn color="primary" @click="fetchDevicesData" :disabled="loadingDevices">Reload</v-btn>
-            <v-btn color="error" @click="$emit('delete-config')">Delete Config</v-btn>
         </v-col>
     </v-row>
 </template>
@@ -35,6 +34,7 @@
 import { ref, watch } from 'vue';
 import { fetchDevices, fetchDeviceIp } from '../utils/specific.js';
 import { 
+    EVENT_FETCH_DEVICE,
     EVENT_OPEN_TOAST,
     EVENT_UPDATE_DEVICE,
     EVENT_UPDATE_DEVICE_IP
@@ -48,6 +48,7 @@ export default {
     },
     data() {
         return {
+            
             devices: [],
             ips: [],
             loadingDevices: false,
@@ -58,6 +59,7 @@ export default {
     },
     methods: {
         async fetchDevicesData() {
+            this.$emit(EVENT_FETCH_DEVICE, false);
             this.selectedDevice = "";
             this.loadingDevices = true;
             try {
@@ -65,13 +67,16 @@ export default {
                 this.devices = data;
                 if (data.length > 0 && !this.selectedDevice) {
                     this.selectedDevice = data[0];
-                    this.$emit(EVENT_UPDATE_DEVICE, this.selectedDevice);
-                }
+                    this.$emit(EVENT_UPDATE_DEVICE, this.selectedDevice);                }
                 else {
                     this.selectedDevice = "";
                     this.selectedIp = "";
                     this.ips = [];
+                    this.$emit(EVENT_FETCH_DEVICE, false);
                 }
+
+                // fetch done -> load test info
+                
             } catch (err) {
                 this.$emit(
                     EVENT_OPEN_TOAST, 
@@ -80,6 +85,7 @@ export default {
                 );
             } finally {
                 this.loadingDevices = false;
+                
             }
         },
         async fetchDeviceIps(device) {
@@ -96,7 +102,9 @@ export default {
                     .filter(ip => ip.ip.startsWith('10.42'))
                     .map(ip => ({ ip: ip.ip, text: `${ip.interface}-${ip.ip}` }));
                 if (this.ips.length > 0) {
+                    // fetch success
                     this.selectedIp = this.ips[0].ip;
+                    this.$emit(EVENT_FETCH_DEVICE, true);
                 }
             } catch (err) {
                 console.log(err.message)
@@ -120,6 +128,7 @@ export default {
     },
     created() {
         this.fetchDevicesData();
-    },
+    }
+
 };
 </script>

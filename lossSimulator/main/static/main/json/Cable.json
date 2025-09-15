@@ -1,50 +1,46 @@
 {
-    "content": {
-        "down": {
-            "corruption": {
-                "correlation": 0,
-                "percentage": 0
-            },
-            "delay": {
-                "correlation": 0,
-                "delay": "2",
-                "jitter": 0
-            },
-            "iptables_options": [],
-            "loss": {
-                "correlation": 0,
-                "percentage": 0
-            },
-            "rate": "6000",
-            "reorder": {
-                "correlation": 0,
-                "gap": 0,
-                "percentage": 0
-            }
+    "down": {
+        "corruption": {
+            "correlation": 0,
+            "percentage": 0
         },
-        "up": {
-            "corruption": {
-                "correlation": 0,
-                "percentage": 0
-            },
-            "delay": {
-                "correlation": 0,
-                "delay": "2",
-                "jitter": 0
-            },
-            "iptables_options": [],
-            "loss": {
-                "correlation": 0,
-                "percentage": 0
-            },
-            "rate": "1000",
-            "reorder": {
-                "correlation": 0,
-                "gap": 0,
-                "percentage": 0
-            }
+        "delay": {
+            "correlation": 0,
+            "delay": "2",
+            "jitter": 0
+        },
+        "iptables_options": [],
+        "loss": {
+            "correlation": 0,
+            "percentage": 0
+        },
+        "rate": "6000",
+        "reorder": {
+            "correlation": 0,
+            "gap": 0,
+            "percentage": 0
         }
     },
-    "id": 3,
-    "name": "Cable"
+    "up": {
+        "corruption": {
+            "correlation": 0,
+            "percentage": 0
+        },
+        "delay": {
+            "correlation": 0,
+            "delay": "2",
+            "jitter": 0
+        },
+        "iptables_options": [],
+        "loss": {
+            "correlation": 0,
+            "percentage": 0
+        },
+        "rate": "1000",
+        "reorder": {
+            "correlation": 0,
+            "gap": 0,
+            "percentage": 0
+        }
+    }
 }

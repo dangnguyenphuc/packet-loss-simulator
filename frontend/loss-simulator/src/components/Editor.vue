@@ -14,6 +14,7 @@
 import { Codemirror } from 'vue-codemirror';
 import { json } from '@codemirror/lang-json';
 import { EVENT_UPDATE_MODEL } from '../constants/constant'
+import { EditorView } from '@codemirror/view';
 
 export default {
     name: 'Editor',
@@ -34,6 +35,7 @@ export default {
             code: this.modelValue,
             extensions: [
                 this.lang === "json" ? json() : null,
+                EditorView.lineWrapping
             ],
         }
     },
@@ -61,9 +63,8 @@ export default {
 }
 
 .editor {
-    height: 200px;
+    height: 100%;
     width: 100%;
 }
-
 
 </style>

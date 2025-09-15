@@ -1,50 +1,46 @@
 {
-    "content": {
-        "down": {
-            "corruption": {
-                "correlation": 0,
-                "percentage": 0
-            },
-            "delay": {
-                "correlation": 0,
-                "delay": "5",
-                "jitter": 0
-            },
-            "iptables_options": [],
-            "loss": {
-                "correlation": 0,
-                "percentage": 0
-            },
-            "rate": "2000",
-            "reorder": {
-                "correlation": 0,
-                "gap": 0,
-                "percentage": 0
-            }
+    "down": {
+        "corruption": {
+            "correlation": 0,
+            "percentage": 0
         },
-        "up": {
-            "corruption": {
-                "correlation": 0,
-                "percentage": 0
-            },
-            "delay": {
-                "correlation": 0,
-                "delay": "5",
-                "jitter": 0
-            },
-            "iptables_options": [],
-            "loss": {
-                "correlation": 0,
-                "percentage": 0
-            },
-            "rate": "256",
-            "reorder": {
-                "correlation": 0,
-                "gap": 0,
-                "percentage": 0
-            }
+        "delay": {
+            "correlation": 0,
+            "delay": "5",
+            "jitter": 0
+        },
+        "iptables_options": [],
+        "loss": {
+            "correlation": 0,
+            "percentage": 0
+        },
+        "rate": "2000",
+        "reorder": {
+            "correlation": 0,
+            "gap": 0,
+            "percentage": 0
         }
     },
-    "id": 4,
-    "name": "DSL"
+    "up": {
+        "corruption": {
+            "correlation": 0,
+            "percentage": 0
+        },
+        "delay": {
+            "correlation": 0,
+            "delay": "5",
+            "jitter": 0
+        },
+        "iptables_options": [],
+        "loss": {
+            "correlation": 0,
+            "percentage": 0
+        },
+        "rate": "256",
+        "reorder": {
+            "correlation": 0,
+            "gap": 0,
+            "percentage": 0
+        }
+    }
 }

@@ -1,50 +1,46 @@
 {
-    "content": {
-        "down": {
-            "corruption": {
-                "correlation": 0,
-                "percentage": 0
-            },
-            "delay": {
-                "correlation": 0,
-                "delay": "100",
-                "jitter": 0
-            },
-            "iptables_options": [],
-            "loss": {
-                "correlation": 0,
-                "percentage": 0
-            },
-            "rate": "780",
-            "reorder": {
-                "correlation": 0,
-                "gap": 0,
-                "percentage": 0
-            }
+    "down": {
+        "corruption": {
+            "correlation": 0,
+            "percentage": 0
         },
-        "up": {
-            "corruption": {
-                "correlation": 0,
-                "percentage": 0
-            },
-            "delay": {
-                "correlation": 0,
-                "delay": "100",
-                "jitter": 0
-            },
-            "iptables_options": [],
-            "loss": {
-                "correlation": 0,
-                "percentage": 0
-            },
-            "rate": "330",
-            "reorder": {
-                "correlation": 0,
-                "gap": 0,
-                "percentage": 0
-            }
+        "delay": {
+            "correlation": 0,
+            "delay": "100",
+            "jitter": 0
+        },
+        "iptables_options": [],
+        "loss": {
+            "correlation": 0,
+            "percentage": 0
+        },
+        "rate": "780",
+        "reorder": {
+            "correlation": 0,
+            "gap": 0,
+            "percentage": 0
         }
     },
-    "id": 1,
-    "name": "3G - Average"
+    "up": {
+        "corruption": {
+            "correlation": 0,
+            "percentage": 0
+        },
+        "delay": {
+            "correlation": 0,
+            "delay": "100",
+            "jitter": 0
+        },
+        "iptables_options": [],
+        "loss": {
+            "correlation": 0,
+            "percentage": 0
+        },
+        "rate": "330",
+        "reorder": {
+            "correlation": 0,
+            "gap": 0,
+            "percentage": 0
+        }
+    }
 }
