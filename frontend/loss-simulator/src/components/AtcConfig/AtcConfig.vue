@@ -49,7 +49,7 @@ import Timer from '../Timer.vue';
 import Result from './Result.vue'
 import { RES_STATUS } from "../../constants/enums";
 import { fetchJsonContent } from '../../utils/specific';
-import { EVENT_OPEN_TOAST, EVENT_UPDATE_MODEL } from "../../constants/constant"
+import { EVENT_OPEN_TOAST, EVENT_UPDATE_MODEL, DEFAULT_ATC_TIMEOUT } from "../../constants/constant"
 
 export default {
   name: "AtcConfig",
@@ -79,7 +79,7 @@ export default {
         id: Date.now(),
         select: null,
         jsonData: "",
-        timer: { h: 0, m: 0, s: 5 },
+        timer: { h: 0, m: 0, s: DEFAULT_ATC_TIMEOUT/1000 },
       });
     },
     deleteRow(index) {

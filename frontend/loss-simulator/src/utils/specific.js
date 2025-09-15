@@ -3,7 +3,8 @@ import {
     DEVICE_ENDPOINT, 
     PROXY_ENDPOINT, 
     IP_ENDPOINT,
-    JSON_ENDPOINT
+    JSON_ENDPOINT,
+    ANDROID_ENDPOINT
 } from '../constants/api.js';
 
 export async function fetchDevices() {
@@ -85,6 +86,10 @@ export async function applyConfig(payload = {}, endpoint = PROXY_ENDPOINT) {
     }
 }
 
-export function convertTimerToMs(h, m, s) {
-    return (h * 3600 + m * 60 + s) * 1000;
+export async function runApp(payload = {}, timeout=60000, endpoint = ANDROID_ENDPOINT) {
+    try {
+        return await axiosPost(endpoint, payload, timeout);
+    } catch (err) {
+        throw new Error(`[POST] ${endpoint} failed: ${err.message}`);
+    }
 }

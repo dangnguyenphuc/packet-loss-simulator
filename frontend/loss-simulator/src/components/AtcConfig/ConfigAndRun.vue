@@ -70,7 +70,7 @@
         <v-btn color="green" variant="tonal" @click="addTest">Add Test</v-btn>
       </v-col>
       <v-col class="d-flex flex-row justify-end align-center ga-3">
-        <v-btn color="primary" @click="runTests">Run</v-btn> 
+        <v-btn color="primary" @click="runTests" :disabled="this.configs.length === 0">Run</v-btn> 
       </v-col>
     </v-row>
   </v-container>
@@ -81,7 +81,7 @@ import { TEST_STATUS, RES_STATUS } from "../../constants/enums";
 import { DEFAULT_ATC_TIMEOUT, EVENT_OPEN_TOAST, TOAST_TIMEOUT } from "../../constants/constant"
 import AtcConfig from "./AtcConfig.vue";
 import Result from "./Result.vue";
-import { applyConfig, deleteShape } from "../../utils/specific";
+import { applyConfig, deleteShape, runApp } from "../../utils/specific";
 
 export default {
   name: "ConfigAndRun",
@@ -94,7 +94,7 @@ export default {
   components: { AtcConfig, Result },
   data() {
     return {
-      numTests: "1",
+      numTests: "0",
       configs: [],
       expanded: [],
       TEST_STATUS,
@@ -126,7 +126,7 @@ export default {
             id: Date.now() + "_" + i,
             select: null,
             jsonData: "",
-            timer: { h: 0, m: 0, s: 5 },
+            timer: { h: 0, m: 0, s: DEFAULT_ATC_TIMEOUT/1000 },
           }
         ],
         result: null,
@@ -147,40 +147,49 @@ export default {
     async runTests() {
       for (let i = 0; i < this.configs.length; i++) {
         const test = this.configs[i];
+        let totalDelay = 0;
+        const timers = test.atcConfigs.map(({ timer }) => {
+          const { h, m, s } = timer;
+          let delay = (h * 3600 + m * 60 + s) * 1000;
+          if (delay <= 0) {
+            delay = DEFAULT_ATC_TIMEOUT;
+          }
+          totalDelay += delay;
+          return delay;
+        });
         try {
           this.configs[i].status = TEST_STATUS.TESTING;
           this.configs[i].result = null;
-  
-          for (let j = 0; j < test.atcConfigs.length; j+= 1) {
-            const curConfig = test.atcConfigs[j];
-            let { h, m, s } = curConfig.timer;
-            let delay = (h * 3600 + m * 60 + s) * 1000;
-            if (delay <= 0) {
-              delay = DEFAULT_ATC_TIMEOUT;
-              this.openToast(`Test ${i}`, `Invalid delay, set to default: ${DEFAULT_ATC_TIMEOUT}`);
-            }
+          const runAppPromise = runApp({
+            deviceId: this.deviceId,
+            time: totalDelay / 1000
+          }, totalDelay + 60000);
+          await new Promise((resolve) => setTimeout(resolve, 10000));
+          const configPromises = test.atcConfigs.map(async (curConfig, j) => {
             await applyConfig({
               data: JSON.parse(curConfig.jsonData || "{}"),
               ip: this.deviceIp
             });
-            await new Promise((resolve) => setTimeout(resolve, delay));
-          }
-
-          deleteShape({ ip: this.deviceIp });
-
+            await new Promise((resolve) => setTimeout(resolve, timers[j]));
+          });
+          await Promise.all([runAppPromise, ...configPromises]);
+          const runResult = await runAppPromise;
+          if (!runResult) throw new Error("Android App: Got null result");
+          try {
+            await deleteShape({ ip: this.deviceIp });
+          } catch {}
           test.result = {
             status: RES_STATUS.SUCCESS,
-            audioFiles: ["audio1.mp3", "audio2.mp3"],
-            selectedAudio: "audio1.mp3",
-            logFile: `run_${i}_2025_09_14.log`,
+            audioFiles: runResult.audioFiles,
+            selectedAudio: runResult.audioFiles[0],
+            logFile: runResult.zrtcLog[0],
           };
           test.status = TEST_STATUS.PASS;
-
         } catch (err) {
           test.result = {
             status: RES_STATUS.FAILED,
             errorMessage: err.message,
-          }
+          };
           test.status = TEST_STATUS.FAIL;
         }
       }

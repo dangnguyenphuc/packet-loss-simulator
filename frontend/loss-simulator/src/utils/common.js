@@ -6,20 +6,7 @@ const apiClient = axios.create({
     headers: {
         'Content-Type': 'application/json',
     },
-    // Optional: Configure CSRF if required by the backend
-    // xsrfCookieName: 'csrftoken',
-    // xsrfHeaderName: 'X-CSRFToken',
 });
-
-// Optional: Add response interceptor for consistent error handling
-apiClient.interceptors.response.use(
-    response => response,
-    error => {
-        // Handle errors globally (e.g., log or show user-friendly message)
-        console.error('API error:', error.message);
-        return Promise.reject(error);
-    }
-);
 
 export async function axiosGet(url, params = {}) {
     const response = await apiClient.get(url, {
@@ -28,8 +15,10 @@ export async function axiosGet(url, params = {}) {
     return response.data;
 }
 
-export async function axiosPost(url, payload = {}) {
-    const response = await apiClient.post(url, payload);
+export async function axiosPost(url, payload = {}, timeout = 60000) {
+    const response = await apiClient.post(url, payload, {
+        timeout
+    });
     return response.data;
 }
 
