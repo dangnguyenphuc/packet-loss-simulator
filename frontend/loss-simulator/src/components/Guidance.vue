@@ -13,6 +13,9 @@ export default {
 }
 </script>
 
-<style lang="">
-    
+<style scoped>
+pre {
+  white-space: pre-wrap; 
+  text-align: left;
+}
 </style>

@@ -124,8 +124,10 @@ export default {
     watch: {
         deviceId(newVal) {
             this.fetchTestInfo();
+            
         },
         display(newVal) {
+            
             if (newVal) this.fetchTestInfo();
         }
     }

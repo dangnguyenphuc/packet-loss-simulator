@@ -1,6 +1,13 @@
-export const GUIDE_TEXT = `+ Fix90: Fixed 90% packet loss rate
-+ Dynamic: Loss rate varies over time (each ... second)
-+ IncreaseOnly: Same as Dynamic but loss rate always increase`
+export const GUIDE_TEXT = `Requirements: 
+	- Android device already connected to current PC
+	- Android device already allowed neccessary permissions to run the ZrtcDemoApp
+	- Android device already connected to ATC network
+
+1. Device Selector panel is used to choose device and the right network interface using ATC network.
+2. After choosing device, there's information panel to display all information about storing audio path, storing log path, ...
+3. Final panel is used to set ATC config(s) and start running ZrtcDemoApp on Android device:
+	+ Can have multiple run
+	+ Each run can used multiple ATC config(s)`;
 
 export const TOAST_TIMEOUT = 3000;
 export const DEFAULT_ATC_TIMEOUT = 10000;

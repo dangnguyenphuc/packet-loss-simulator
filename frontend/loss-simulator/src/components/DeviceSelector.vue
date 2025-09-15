@@ -35,7 +35,6 @@ import { ref, watch } from 'vue';
 import { fetchDevices, fetchDeviceIp } from '../utils/specific.js';
 import { 
     EVENT_FETCH_DEVICE,
-    EVENT_OPEN_TOAST,
     EVENT_UPDATE_DEVICE,
     EVENT_UPDATE_DEVICE_IP
  } from '../constants/constant.js';
@@ -78,17 +77,18 @@ export default {
                 // fetch done -> load test info
                 
             } catch (err) {
-                this.$emit(
-                    EVENT_OPEN_TOAST, 
-                    "Get devices failed",
-                    "Error: " + err.message
-                );
+                // this.$emit(
+                //     EVENT_OPEN_TOAST, 
+                //     "Get devices failed",
+                //     "Error: " + err.message
+                // );
             } finally {
                 this.loadingDevices = false;
                 
             }
         },
         async fetchDeviceIps(device) {
+            this.$emit(EVENT_FETCH_DEVICE, false);
             this.selectedIp = "";
             if (!device || device.length === 0) 
             {
@@ -108,11 +108,11 @@ export default {
                 }
             } catch (err) {
                 console.log(err.message)
-                this.$emit(
-                    EVENT_OPEN_TOAST, 
-                    "Get device IP failed",
-                    "Error: " + err.message
-                );
+                // this.$emit(
+                //     EVENT_OPEN_TOAST, 
+                //     "Get device IP failed",
+                //     "Error: " + err.message
+                // );
             } finally {
                 this.loadingIps = false;
             }

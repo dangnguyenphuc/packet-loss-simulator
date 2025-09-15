@@ -12,7 +12,7 @@
                 :value="panel.value"
                 :class="panel.class"
             >
-                <div v-if="panel.key < 10 || (selectedDevice && selectedIp)">
+                <div v-if="panel.key < 2 || (selectedDevice && selectedIp)">
                     <v-expansion-panel-title>
                         <span class="title">{{ panel.title }}</span>
                     </v-expansion-panel-title>
@@ -52,7 +52,7 @@ export default {
         return {
             selectedDevice: '',
             selectedIp: '',
-            expanded: [1, 3],
+            expanded: [1,2,3],
             panels: [
                 // FIRST PANEL
                 {
@@ -120,11 +120,12 @@ export default {
             this.selectedIp = value;
         },
         async handleCompletedFetchDevice(value) {
+            
             // display all other panels
             for (let i = 2; i < this.panels.length; i+=1) {
                 this.panels[i].props.display = value;
             }
-
+            if(!value) return;
             // fetch defined ATC Configs
             try {
                 const atcConfigSelections = await fetchJsons();
@@ -133,7 +134,7 @@ export default {
                 this.panels[3].props.deviceId = this.selectedDevice;
                 this.panels[3].props.deviceIp = this.selectedIp;
             } catch (err) {
-                openToast("Error Getting ATC Configs file", err.message);
+                this.openToast("Error Getting ATC Configs file", err.message);
             }
         },
         openToast(header = "", message = "", timeout = TOAST_TIMEOUT) {
