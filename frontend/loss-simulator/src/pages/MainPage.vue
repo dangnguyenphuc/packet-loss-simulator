@@ -52,7 +52,7 @@ export default {
         return {
             selectedDevice: '',
             selectedIp: '',
-            expanded: [1, 2, 3],
+            expanded: [1, 3],
             panels: [
                 // FIRST PANEL
                 {

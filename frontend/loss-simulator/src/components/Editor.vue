@@ -60,10 +60,10 @@ export default {
 :deep(.cm-editor) {
   text-align: left !important;
   display: block !important;
+  height: 300px;
 }
 
 .editor {
-    height: 100%;
     width: 100%;
 }
 

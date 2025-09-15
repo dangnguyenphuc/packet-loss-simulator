@@ -1,7 +1,6 @@
 <template>
   <v-container v-if="display" class="d-flex flex-column ga-3">
     <!-- Input -->
-     {{ deviceId }} {{ deviceIp }}
     <v-row>
       <v-col cols="12" md="4">
         <v-text-field
@@ -26,7 +25,12 @@
             <v-row class="w-100 d-flex align-center">
               <v-col cols="6"> Test #{{ index + 1 }} </v-col>
               <v-col cols="6" class="d-flex justify-end align-center ga-2">
-                <v-btn @click.stop="deleteTest(index)" color="red" icon="mdi-delete" density="compact"></v-btn>
+                <v-btn 
+                  @click.stop="deleteTest(index)" 
+                  color="red" 
+                  icon="mdi-delete" 
+                  density="compact"
+                />
                 <v-progress-circular
                   v-if="test.status === TEST_STATUS.TESTING"
                   indeterminate
@@ -49,20 +53,24 @@
 
           <!-- Panel Content -->
           <v-expansion-panel-text>
-            <AtcConfig @open:Toast="openToast" v-model="test.atcConfigs" :result="test.result" :definedConfig="atcConfigs"/>
-            
+            <AtcConfig 
+              @open:Toast="openToast" 
+              v-model="test.atcConfigs" 
+              :result="test.result" 
+              :definedConfig="atcConfigs"
+            />
           </v-expansion-panel-text>
         </v-expansion-panel>
       </v-expansion-panels>
     </v-row>
 
     <!-- Controls -->
-    <v-row>
-      <v-col class="d-flex flex-row justify-center align-center ga-3">
-        <v-btn color="primary" @click="runTests">Run</v-btn>
-        <v-btn color="red" variant="tonal" @click="resetTests">
-          Reset
-        </v-btn>
+    <v-row class="pa-0">
+      <v-col class="d-flex flex-row justify-start align-center ga-3">
+        <v-btn color="green" variant="tonal" @click="addTest">Add Test</v-btn>
+      </v-col>
+      <v-col class="d-flex flex-row justify-end align-center ga-3">
+        <v-btn color="primary" @click="runTests">Run</v-btn> 
       </v-col>
     </v-row>
   </v-container>
@@ -78,20 +86,10 @@ import { applyConfig, deleteShape } from "../../utils/specific";
 export default {
   name: "ConfigAndRun",
   props: {
-    display: {
-      required: true,
-    },
-    atcConfigs: {
-      default: []
-    },
-    deviceId: {
-      required: true,
-      type: String,
-    },
-    deviceIp: {
-      required: true,
-      type: String
-    }
+    display: { required: true },
+    atcConfigs: { default: [] },
+    deviceId: { required: true, type: String },
+    deviceIp: { required: true, type: String }
   },
   components: { AtcConfig, Result },
   data() {
@@ -109,14 +107,18 @@ export default {
       if (isNaN(value)) value = 0;
       if (value < 0) value = 0;
       if (value > 10) value = 10;
-
       this.numTests = value.toString();
       this.generateConfigs();
     },
 
     generateConfigs() {
       const count = parseInt(this.numTests, 10) || 0;
-      this.configs = Array.from({ length: count }, (_, i) => ({
+      this.configs = Array.from({ length: count }, (_, i) => this.createTest(i));
+      this.expanded = this.configs.map((_, i) => i);
+    },
+
+    createTest(i = 0) {
+      return {
         id: Date.now() + i,
         status: TEST_STATUS.PENDING,
         atcConfigs: [
@@ -128,39 +130,43 @@ export default {
           }
         ],
         result: null,
-      }));
-      this.expanded = this.configs.map((_, i) => i);
+      };
     },
 
-    
+    addTest() {
+      if (this.configs.length >= 10) {
+        this.openToast("Limit Reached", "You can only add up to 10 tests");
+        return;
+      }
+      const newTest = this.createTest(this.configs.length);
+      this.configs.push(newTest);
+      this.numTests = (parseInt(this.numTests, 10) + 1).toString();
+      this.expanded.push(this.configs.length - 1);
+    },
+
     async runTests() {
       for (let i = 0; i < this.configs.length; i++) {
-        // each test
         const test = this.configs[i];
         try {
           this.configs[i].status = TEST_STATUS.TESTING;
           this.configs[i].result = null;
   
           for (let j = 0; j < test.atcConfigs.length; j+= 1) {
-            console.log(`config${j}`);
             const curConfig = test.atcConfigs[j];
-            const { h, m, s } = curConfig.timer;
-            const delay = (h * 3600 + m * 60 + s) * 1000;
+            let { h, m, s } = curConfig.timer;
+            let delay = (h * 3600 + m * 60 + s) * 1000;
             if (delay <= 0) {
               delay = DEFAULT_ATC_TIMEOUT;
-              this.openToast(`Test ${i}`, `Invalid delay, set time to default: ${DEFAULT_ATC_TIMEOUT}`);
+              this.openToast(`Test ${i}`, `Invalid delay, set to default: ${DEFAULT_ATC_TIMEOUT}`);
             }
             await applyConfig({
-              data: JSON.parse(curConfig.jsonData),
+              data: JSON.parse(curConfig.jsonData || "{}"),
               ip: this.deviceIp
             });
             await new Promise((resolve) => setTimeout(resolve, delay));
-            continue;
           }
 
-          deleteShape({
-            ip: this.deviceIp
-          })
+          deleteShape({ ip: this.deviceIp });
 
           test.result = {
             status: RES_STATUS.SUCCESS,
@@ -172,18 +178,14 @@ export default {
 
         } catch (err) {
           test.result = {
-              status: RES_STATUS.FAILED,
-              errorMessage: err.message,
+            status: RES_STATUS.FAILED,
+            errorMessage: err.message,
           }
           test.status = TEST_STATUS.FAIL;
         }
       }
     },
-
-    resetTests() {
-      this.generateConfigs();
-    },
-
+    
     deleteTest(index) {
       this.configs.splice(index, 1);
       this.expanded = this.configs.map((_, i) => i);

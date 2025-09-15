@@ -5,13 +5,13 @@
         <v-btn color="red" @click="deleteRow(index)" icon="mdi-delete" density="compact" :disabled="!!result"></v-btn>
       </v-col>
       <v-col class="d-flex flex-column justify-start align-start ga-2">
-        <v-row class="d-flex">
+        <v-row class="d-flex justify-center align-center ga-2">
+          <span>Atc Config</span>
           <v-select 
           v-model="row.select" 
           :items="selectorOptions" 
           item-title="title"
           item-value="value"
-          label="Atc Config" 
           hide-details
           @update:modelValue="onConfigSelected(row, $event)"
         />
@@ -34,7 +34,7 @@
     </v-row>
     <v-row  v-if="!result" class="d-flex justify-center align-center pa-0 ga-3">
       <v-btn density="compact" icon="mdi-plus" @click="addRow"></v-btn>
-      <v-btn density="compact" icon="mdi-restart" @click="resetRows" :disabled="disableApply"></v-btn>
+      <v-btn density="compact" icon="mdi-restart" @click="resetRows"></v-btn>
     </v-row>
     <v-row>
       <Result v-if="result" :result="result" />
@@ -49,7 +49,7 @@ import Timer from '../Timer.vue';
 import Result from './Result.vue'
 import { RES_STATUS } from "../../constants/enums";
 import { fetchJsonContent } from '../../utils/specific';
-import { EVENT_OPEN_TOAST } from "../../constants/constant"
+import { EVENT_OPEN_TOAST, EVENT_UPDATE_MODEL } from "../../constants/constant"
 
 export default {
   name: "AtcConfig",
@@ -85,8 +85,9 @@ export default {
     deleteRow(index) {
       this.rows.splice(index, 1);
     },
-    resetRows() {
+    resetRows() { 
       this.rows = [];
+      this.addRow();
     },
 
     async onConfigSelected(row, value) {
@@ -102,11 +103,6 @@ export default {
         this.$emit(EVENT_OPEN_TOAST, "Error Getting Json file content", err.message);
       }
     }
-  },
-  computed: {
-    disableApply() {
-      return this.rows.length === 0;
-    },
   },
   watch: {
       rows(newValue) {
