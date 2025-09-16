@@ -77,11 +77,11 @@ export default {
                 // fetch done -> load test info
                 
             } catch (err) {
-                // this.$emit(
-                //     EVENT_OPEN_TOAST, 
-                //     "Get devices failed",
-                //     "Error: " + err.message
-                // );
+                this.$emit(
+                    EVENT_OPEN_TOAST, 
+                    "Get devices failed",
+                    "Error: " + err.message
+                );
             } finally {
                 this.loadingDevices = false;
                 
@@ -108,11 +108,11 @@ export default {
                 }
             } catch (err) {
                 console.log(err.message)
-                // this.$emit(
-                //     EVENT_OPEN_TOAST, 
-                //     "Get device IP failed",
-                //     "Error: " + err.message
-                // );
+                this.$emit(
+                    EVENT_OPEN_TOAST, 
+                    "Get device IP failed",
+                    "Error: " + err.message
+                );
             } finally {
                 this.loadingIps = false;
             }

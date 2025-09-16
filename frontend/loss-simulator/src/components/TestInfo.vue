@@ -1,5 +1,5 @@
 <template>
-    <div v-if="display" class="test-info-container">
+    <div class="test-info-container">
         <v-row class="pa-4 d-flex flex-auto ga-2" align="center" justify="center" gap="3">
             <v-col class="d-flex ga-2 flex-column">
                 <v-row class="d-flex justify-center align-center">
@@ -13,9 +13,42 @@
                         </v-row>
 
                         <v-row class="d-flex flex-column gap-2">
-                            <template v-if="Array.isArray(field.data) && field.data.length > 0">
-                                <v-text-field v-for="(d, i) in field.data" :key="i" :model-value="d" readonly
-                                    density="compact" />
+                            <template v-if="Array.isArray(field.data) && field.data.length > 0">                    
+                                <template v-if="field.title !== 'Audio Files'">
+                                    <v-text-field
+                                        v-for="(d, i) in field.data"
+                                        :key="i"
+                                        :model-value="d"
+                                        readonly
+                                        density="compact"
+                                    />
+                                </template>
+
+                                <template v-else>
+                                    <v-row
+                                        v-for="(d, i) in field.data"
+                                        :key="i"
+                                        class=""
+                                    >
+                                        <v-col cols="8">
+                                        <v-text-field
+                                            :model-value="extractFilename(d)"
+                                            label="File"
+                                            readonly
+                                            density="compact"
+                                        />
+                                        </v-col>
+                                        <v-col cols="4">
+                                        <v-text-field
+                                            :model-value="extractDuration(d)"
+                                            label="Duration"
+                                            readonly
+                                            density="compact"
+                                        />
+                                        </v-col>
+                                    </v-row>
+                                </template>
+                        
                             </template>
                             <template v-else>
                                 <v-text-field :model-value="field.data" readonly density="compact" />
@@ -60,9 +93,6 @@ import { EVENT_OPEN_TOAST } from '../constants/constant'
 export default {
     name: 'TestInfo',
     props: {
-        display: {
-            required: true,
-        },
         deviceId: {
             type: String,
             default: '',
@@ -72,7 +102,7 @@ export default {
         return {
             infoFieldsPC: [
                 {
-                    title: 'Audio File',
+                    title: 'Audio Files',
                     data: [],
                 },
                 {
@@ -120,16 +150,25 @@ export default {
                 this.$emit(EVENT_OPEN_TOAST, "Get Info error", err.message);
             }
         },
+        extractFilename(path) {
+            if (!path) return '';
+            const lastDash = path.lastIndexOf('-');
+            return path.substring(0, lastDash);
+        },
+
+        extractDuration(path) {
+            if (!path) return '';
+            const lastDash = path.lastIndexOf('-');
+            return path.substring(lastDash + 1);
+        }
     },
     watch: {
         deviceId(newVal) {
             this.fetchTestInfo();
-            
         },
-        display(newVal) {
-            
-            if (newVal) this.fetchTestInfo();
-        }
+    },
+    async mounted() {
+        await this.fetchTestInfo();
     }
 };
 </script>

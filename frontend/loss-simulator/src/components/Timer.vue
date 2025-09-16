@@ -85,6 +85,7 @@ export default {
 
 <style scoped>
 .timer-input-field {
-  width: 80px;
+  min-width: 70px;
+  max-width: 100px;
 }
 </style>

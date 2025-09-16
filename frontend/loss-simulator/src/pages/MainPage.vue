@@ -12,7 +12,7 @@
                 :value="panel.value"
                 :class="panel.class"
             >
-                <div v-if="panel.key < 2 || (selectedDevice && selectedIp)">
+                <div v-if="panel.key < 3 || (selectedDevice && selectedIp)">
                     <v-expansion-panel-title>
                         <span class="title">{{ panel.title }}</span>
                     </v-expansion-panel-title>
@@ -52,7 +52,7 @@ export default {
         return {
             selectedDevice: '',
             selectedIp: '',
-            expanded: [1,2,3],
+            expanded: [1],
             panels: [
                 // FIRST PANEL
                 {
@@ -88,7 +88,6 @@ export default {
                     class: 'test-info',
                     component: 'TestInfo',
                     props: {
-                        display: false,
                         deviceId: '',
                     },
                     events: {},
@@ -101,7 +100,6 @@ export default {
                     class: 'config-container',
                     component: 'ConfigAndRun',
                     props: {
-                        display: false,
                         atcConfigs: [],
                         deviceId: "",
                         deviceIp: ""
@@ -121,11 +119,8 @@ export default {
         },
         async handleCompletedFetchDevice(value) {
             
-            // display all other panels
-            for (let i = 2; i < this.panels.length; i+=1) {
-                this.panels[i].props.display = value;
-            }
             if(!value) return;
+            this.expanded = [2,3];
             // fetch defined ATC Configs
             try {
                 const atcConfigSelections = await fetchJsons();

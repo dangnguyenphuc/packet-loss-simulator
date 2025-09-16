@@ -27,7 +27,7 @@
           />
         </v-row>
       </v-col>
-      <v-col cols="6" md="7" xs="12">
+      <v-col v-if="row.select" cols="6" md="7" xs="12">
         <Editor v-model="row.jsonData"/>
       </v-col>
       

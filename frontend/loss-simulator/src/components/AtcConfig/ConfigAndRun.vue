@@ -1,5 +1,5 @@
 <template>
-  <v-container v-if="display" class="d-flex flex-column ga-3">
+  <v-container class="d-flex flex-column ga-3">
     <!-- Input -->
     <v-row>
       <v-col cols="12" md="4">
@@ -86,7 +86,6 @@ import { applyConfig, deleteShape, runApp } from "../../utils/specific";
 export default {
   name: "ConfigAndRun",
   props: {
-    display: { required: true },
     atcConfigs: { default: [] },
     deviceId: { required: true, type: String },
     deviceIp: { required: true, type: String }
@@ -206,9 +205,10 @@ export default {
     },
   },
   watch: {
-    display(newVal) {
-      if (newVal) this.generateConfigs();
-    },
+    
+  },
+  async mounted() {
+    await this.generateConfigs();
   }
 };
 </script>
