@@ -56,3 +56,9 @@
     ./run.sh # to run
     ./stop.sh # to stop
     ```
+- Infomation:
+    ```bash
+    # ATC tool run on <IP>:8080
+    # Django backend run on "localhost:8000"
+    # Vue frontend run on "localhost:5173"
+    ```
