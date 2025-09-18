@@ -53,7 +53,7 @@
 - Note: Linux based only
 - Go to Project most outside folder folder and run:
     ```bash
-    ./run.sh # to run
+    ./run.sh # to run (Need to change Project Directory variable)
     ./stop.sh # to stop
     ```
 - Infomation:
