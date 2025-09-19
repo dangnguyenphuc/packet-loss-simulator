@@ -1,6 +1,8 @@
 from .utils import AdbUtils, DateTimeUtils
 from .constants import *
+from django.conf import settings
 import uiautomator2 as u2
+import threading
 
 class AndroidAppController:
     def __init__(self, deviceId=None, packageName = APP_PACKAGE, path = ANDROID_DEMO_PATH, callMode = CALL_MODE.AUDIO, callOption = CALL_OPTION.LOOPBACK_SERVER.value):
@@ -118,13 +120,11 @@ class AndroidAppController:
         else:
             AdbUtils.startActivityWithExtras(self.packageName, activity, self.serial, self.stringExtras, self.intExtras, self.boolExtras)
 
-    def startEval(self, activity=[LOGIN_ACTIVITY, MAIN_ACTIVITY],timeout = DEFAULT_EVAL_TIMEOUT, pcAudioPath = DESKTOP_STATIC_FOLDER):
+    def startEval(self, startedEvent, activity=[LOGIN_ACTIVITY, MAIN_ACTIVITY],timeout = DEFAULT_EVAL_TIMEOUT, pcAudioPath = str(settings.BASE_DIR) + "/" + DESKTOP_STATIC_FOLDER):
         self.startActivity(activity[0])
         if self.waitForActivity(activity[1]):
+            startedEvent.set()
             self.sleep(timeout)
-            self.press("back")
-            self.press("back")
-
             self.stopApp()
 
             # pull audio files

@@ -93,3 +93,11 @@ export async function runApp(payload = {}, timeout=60000, endpoint = ANDROID_END
         throw new Error(`[POST] ${endpoint} failed: ${err.message}`);
     }
 }
+
+export async function getAppRes(taskId, endpoint = ANDROID_ENDPOINT) {
+    try {
+        return await axiosGet(`${endpoint}/${taskId}`);
+    } catch (err) {
+        throw new Error(`[GET] ${endpoint} failed: ${err.message}`);
+    }
+}

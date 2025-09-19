@@ -1,13 +1,13 @@
 from enum import Enum
+from django.conf import settings
 
 NETWORK_ATC_SUBMASK_NET = "10.42.0.0/24"
 NETWORK_ATC_GATEWAY_IP = "http://10.42.0.1:8080"
 NETWORK_ATC_ENDPOINT = "/api/v1/shape/"
 NETWORK_ATC_MAX_RETRY = 5
 
-STATIC_FOLDER = "static/"
-JSON_CONFIG_FOLDER = "main/static/main/json"
-LOSS_STRATEGIES_FOLDER = "main/static/main/json-loss-strategies"
+STATIC_FOLDER = f"{str(settings.BASE_DIR)}/static/"
+JSON_CONFIG_FOLDER = f"{str(settings.BASE_DIR)}/main/static/main/json"
 AUDIO_TYPE = ".wav"
 LOG_TYPE = ".log"
 

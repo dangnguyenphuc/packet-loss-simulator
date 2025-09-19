@@ -103,18 +103,13 @@ class FileUtils:
 
     @staticmethod
     def listAllJsonFiles(folderPath: str = JSON_CONFIG_FOLDER) -> list[str]:
-        res = FileUtils.listFile(str(settings.BASE_DIR) + "/" + folderPath, type="json")
+        res = FileUtils.listFile(folderPath, type="json")
         res.sort()
         return res
 
     @staticmethod
-    def listAllLossStrategyFiles(folderPath: str = LOSS_STRATEGIES_FOLDER) -> dict[str, int]:
-        res = FileUtils.listFile(str(settings.BASE_DIR) + "/" + folderPath, type="json")
-        return res
-
-    @staticmethod
     def getJsonContent(filename: str, folderPath: str = JSON_CONFIG_FOLDER) -> str:
-        return FileUtils.openJsonFile(os.path.join(str(settings.BASE_DIR), folderPath, filename))
+        return FileUtils.openJsonFile(os.path.join(folderPath, filename))
     
     @staticmethod
     def getAtcInfo() -> dict:
@@ -125,7 +120,7 @@ class FileUtils:
     
     @staticmethod
     def getAudioFiles(audioPath=STATIC_FOLDER) -> list[str]:
-        paths = FileUtils.listFile(str(settings.BASE_DIR) + "/" + audioPath, AUDIO_TYPE)
+        paths = FileUtils.listFile(audioPath, AUDIO_TYPE)
         return [os.path.abspath(path) for path in paths]
     
     @staticmethod

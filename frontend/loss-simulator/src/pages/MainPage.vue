@@ -120,7 +120,7 @@ export default {
         async handleCompletedFetchDevice(value) {
             
             if(!value) return;
-            this.expanded = [2,3];
+            this.expanded = [1,2,3];
             // fetch defined ATC Configs
             try {
                 const atcConfigSelections = await fetchJsons();
