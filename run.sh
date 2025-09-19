@@ -8,16 +8,18 @@
 ##########################################################
 
 # CONFIG
-PROJECT_DIR="/home/dangnp/workspace/loss-simulator"
+## Passed from makefile or default
+PROJECT_DIR="${PROJECT_DIR:-/home/dangnp/workspace/tools/loss-simulator}"
+PYTHON_BIN="${PYTHON_BIN:-/usr/bin/python3.12}"
+PIP_BIN="${PIP_BIN:-/usr/bin/pip3.12}"
+DJANGO_PORT="${DJANGO_PORT:-8000}"
+FRONTEND_PORT="${FRONTEND_PORT:-5173}"
+
+## hardcode
 BACKEND_DIR="$PROJECT_DIR/lossSimulator"
 FRONTEND_DIR="$PROJECT_DIR/frontend/loss-simulator"
 VENV_DIR="$PROJECT_DIR/venv"
 
-PYTHON_BIN="/usr/bin/python3.12"
-PIP_BIN="/usr/bin/pip3.12"
-
-DJANGO_PORT=8000
-FRONTEND_PORT=5173
 
 echo "[INFO] Starting setup for Django + Vue project..."
 
@@ -78,11 +80,10 @@ source "$VENV_DIR/bin/activate"
 # -------------------------------
 # 6. Install backend dependencies
 # -------------------------------
-cd "$PROJECT_DIR" || { echo "[ERROR] Cannot cd into $PROJECT_DIR"; exit 1; }
 
 if [ -f "requirements.txt" ]; then
     echo "[INFO] Installing backend dependencies..."
-    pip install -r requirements.txt
+    pip install -r $PROJECT_DIR/requirements.txt
 else
     echo "[WARN] requirements.txt not found, skipping pip install"
 fi
@@ -90,23 +91,21 @@ fi
 # -------------------------------
 # 7. Run Django backend in background
 # -------------------------------
-cd "$BACKEND_DIR"
-python manage.py migrate
+python "$BACKEND_DIR/manage.py" migrate
 echo "[INFO] Starting Django server at http://127.0.0.1:$DJANGO_PORT/"
-nohup python manage.py runserver "0.0.0.0:$DJANGO_PORT" > "$PROJECT_DIR/django.log" 2>&1 &
+nohup python "$BACKEND_DIR/manage.py" runserver "0.0.0.0:$DJANGO_PORT" > "$PROJECT_DIR/django.log" 2>&1 &
 
 # -------------------------------
 # 8. Run frontend (Vue + Vuetify) in background
 # -------------------------------
-cd "$FRONTEND_DIR"
 
 if [ ! -d "node_modules" ]; then
     echo "[INFO] node_modules not found. Running npm install..."
-    npm install
+    npm install --prefix $FRONTEND_DIR
 fi
 
 echo "[INFO] Starting frontend (Vue + Vite) at http://127.0.0.1:$FRONTEND_PORT/"
-nohup npm run dev -- --host 0.0.0.0 --port $FRONTEND_PORT > "$PROJECT_DIR/frontend.log" 2>&1 &
+nohup npm run dev --prefix $FRONTEND_DIR -- --host 0.0.0.0 --port $FRONTEND_PORT > "$PROJECT_DIR/frontend.log" 2>&1 &
 
 echo "[INFO] Backend and frontend are running in background."
 echo "[INFO] Logs:"

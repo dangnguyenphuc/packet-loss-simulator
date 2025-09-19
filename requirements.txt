@@ -14,3 +14,4 @@ retry2==0.9.5
 sqlparse==0.5.3
 uiautomator2==3.4.0
 urllib3==2.5.0
+django-cors-headers
