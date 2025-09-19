@@ -4,8 +4,8 @@
 # Stop script for Django + Vue (Vuetify) project
 ##########################################################
 
-DJANGO_PORT=8000
-FRONTEND_PORT=5173
+DJANGO_PORT="${DJANGO_PORT:-8000}"
+FRONTEND_PORT="${FRONTEND_PORT:-5173}"
 
 echo "[INFO] Stopping Django + Vue project..."
 

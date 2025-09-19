@@ -1,0 +1,17 @@
+[Unit]
+Description=Augmented Traffic Control Daemon
+After=network.target
+Wants=network.target
+
+[Service]
+EnvironmentFile=/etc/atc/atc.env
+Type=simple
+ExecStart=/etc/atc/runatcd.sh
+Restart=always
+RestartSec=5
+User=root
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

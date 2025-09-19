@@ -1,0 +1,18 @@
+[Unit]
+Description=ATC Django Web UI
+After=network.target atcd.service
+Requires=atcd.service
+
+[Service]
+EnvironmentFile=/etc/atc/atc.env
+Type=simple
+User=dangnp
+ExecStart=/etc/atc/runatcui.sh
+StandardOutput=journal
+StandardError=journal
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+
