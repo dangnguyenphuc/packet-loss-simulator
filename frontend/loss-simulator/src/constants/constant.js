@@ -11,7 +11,8 @@ export const GUIDE_TEXT = `Requirements:
 
 export const TOAST_TIMEOUT = 3000;
 export const DEFAULT_ATC_TIMEOUT = 10000;
-
+export const MAX_RETRIES = 3;
+export const RETRY_DELAY = 2000;
 /*
 \\\\\\\\\\\\\\\\\\\\\\\\
 Emit events: -----------

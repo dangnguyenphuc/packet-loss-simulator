@@ -78,7 +78,7 @@
 
 <script>
 import { TEST_STATUS, RES_STATUS } from "../../constants/enums";
-import { DEFAULT_ATC_TIMEOUT, EVENT_OPEN_TOAST, TOAST_TIMEOUT } from "../../constants/constant"
+import { DEFAULT_ATC_TIMEOUT, EVENT_OPEN_TOAST, TOAST_TIMEOUT, MAX_RETRIES, RETRY_DELAY } from "../../constants/constant"
 import AtcConfig from "./AtcConfig.vue";
 import Result from "./Result.vue";
 import { applyConfig, deleteShape, runApp, getAppRes } from "../../utils/specific";
@@ -167,7 +167,6 @@ export default {
           if (!startAppRes || startAppRes.status !== "started") {
             throw new Error("Android App: Cannot start App");
           }
-          console.log(startAppRes)
           for (let j = 0; j < test.atcConfigs.length; j++) {
             const curConfig = test.atcConfigs[j];
 
@@ -175,7 +174,6 @@ export default {
               data: JSON.parse(curConfig.jsonData || "{}"),
               ip: this.deviceIp,
             });
-            console.log("Wait ", timers[j]);
             // wait timer for this config
             await new Promise((resolve) => setTimeout(resolve, timers[j]));
           }
@@ -184,15 +182,43 @@ export default {
             await deleteShape({ ip: this.deviceIp });
           } catch {}
 
-          const runAppRes = await getAppRes(startAppRes.taskId);
-          console.log(runAppRes);
-          if (!runAppRes || runAppRes.status !== "done") throw new Error("Android App: run fail");
-          
+          let runAppRes = null;
+
+          for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+            runAppRes = await getAppRes(startAppRes.taskId);
+
+            if (
+              runAppRes &&
+              runAppRes.status === "done" &&
+              runAppRes.result.audioFiles?.length > 0 &&
+              runAppRes.result.zrtcLog?.length > 0
+            ) {
+              // Success, break the retry loop
+              break;
+            }
+
+            if (attempt < MAX_RETRIES) {
+              // Wait before retrying
+              await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY));
+            }
+          }
+
+          // After retries, validate result
+          if (
+            !runAppRes ||
+            runAppRes.status !== "done" ||
+            !runAppRes.result.audioFiles?.length ||
+            !runAppRes.result.zrtcLog?.length
+          ) {
+            throw new Error("Android App: run fail or missing audio/log files");
+          }
+
+          // Success
           test.result = {
             status: RES_STATUS.SUCCESS,
-            audioFiles: runAppRes.audioFiles ? runAppRes.audioFiles : [],
-            selectedAudio: runAppRes.audioFiles ? runAppRes.audioFiles[0] : "",
-            logFile: runAppRes.zrtcLog ? runAppRes.zrtcLog[0] : "",
+            audioFiles: runAppRes.result.audioFiles,
+            selectedAudio: runAppRes.result.audioFiles[0],
+            logFile: runAppRes.result.zrtcLog[0],
           };
           test.status = TEST_STATUS.PASS;
         } catch (err) {
