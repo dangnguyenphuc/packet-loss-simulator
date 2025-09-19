@@ -1,7 +1,7 @@
 # README.md
 ## 1. Requirements:
 
-- Download ZRTC Demo App at commit [dangnp/android/demoapp_record_inout_audio](http://zalogit2.zing.vn/voip_platform/core/zrtc_core/-/tree/def02a24ada4c8d123233d5be18815441658a62c)
+- Download ZRTC Demo App at commit [dangnp/android/demoapp_record_inout_audio](https://www.youtube.com/watch?v=xvFZjo5PgG0)
 
 - Clone whole project at [Master](https://github.com/dangnguyenphuc/packet-loss-simulator)
 
@@ -53,7 +53,7 @@
 - Note: Linux based only
 - Go to Project most outside folder folder and run:
     ```bash
-    ./run.sh # to run
+    ./run.sh # to run (Need to change Project Directory variable)
     ./stop.sh # to stop
     ```
 - Infomation:
