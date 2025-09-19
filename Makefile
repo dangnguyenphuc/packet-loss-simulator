@@ -1,4 +1,4 @@
-PROJECT_DIR := /home/dangnp/workspace/tools/loss-simulator # change this
+PROJECT_DIR := /home/dangnp/workspace/tools/loss-simulator# change this
 
 # atc var
 ATC_DIR := augmented-traffic-control
@@ -71,7 +71,7 @@ atcui-log:
 	@echo "[INFO] Showing logs for atcui.service..."
 	sudo journalctl -u atcui.service -f
 
-run:
+run: stop
 	@echo "[INFO] Starting project with Python=$(PYTHON3_BIN), Django port=$(PROJECT_DJANGO_PORT), Frontend port=$(PROJECT_FRONTEND_PORT)"
 	PROJECT_DIR=$(PROJECT_DIR) \
 	PYTHON_BIN=$(PYTHON3_BIN) \
