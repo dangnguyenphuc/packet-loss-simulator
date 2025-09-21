@@ -217,7 +217,6 @@ export default {
           test.result = {
             status: RES_STATUS.SUCCESS,
             audioFiles: runAppRes.result.audioFiles,
-            selectedAudio: runAppRes.result.audioFiles[0],
             logFile: runAppRes.result.zrtcLog[0],
           };
           test.status = TEST_STATUS.PASS;

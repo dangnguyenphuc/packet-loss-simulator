@@ -127,10 +127,7 @@ class FileUtils:
     def getLogFiles(logPath=STATIC_FOLDER) -> list[str]:
         paths = FileUtils.listFile(logPath, LOG_TYPE)
         return [os.path.abspath(path) for path in paths]
-    
-    @staticmethod
-    def getStaticFolder() -> str:
-        return os.path.abspath(STATIC_FOLDER)
+        
     
 class RequestUtils:
     @staticmethod

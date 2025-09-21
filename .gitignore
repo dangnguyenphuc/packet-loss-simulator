@@ -4,3 +4,5 @@ venv/
 package-lock.json
 *.log
 static/*
+frontend/loss-simulator/*.vscode*
+frontend/loss-simulator/public/audio/*
