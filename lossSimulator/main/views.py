@@ -41,7 +41,7 @@ def getInfo(request):
             "pc":  
             {
                 "audio": AudioUtils.getAudioFileWithDurations(),
-                "recordFolder": FileUtils.getStaticFolder()
+                "recordFolder": str(settings.BASE_DIR) + "/" + DESKTOP_STATIC_FOLDER
             },
             "android":
             {
@@ -93,9 +93,14 @@ def runApp(taskId, deviceId, timeout, startedEvent):
     try:
         controller.startEval(startedEvent, timeout=timeout)
         staticFolder = str(settings.BASE_DIR) + "/" + DESKTOP_STATIC_FOLDER + controller.timestamp
+        
+        audioFiles = FileUtils.getAudioFiles(staticFolder)
+        logFiles = FileUtils.getLogFiles(staticFolder)
+
+        audioFiles = [file.split("public")[-1] for file in audioFiles]
         result = {
-            "audioFiles": FileUtils.getAudioFiles(staticFolder),
-            "zrtcLog": FileUtils.getLogFiles(staticFolder)
+            "audioFiles": audioFiles,
+            "zrtcLog": logFiles
         }
         cache.set(taskId, result, timeout=10)
     except Exception as e:

@@ -28,7 +28,7 @@ class CALL_MODE:
     GROUP = "group"
 
 
-DESKTOP_STATIC_FOLDER = "../static/"
+DESKTOP_STATIC_FOLDER = "../frontend/loss-simulator/public/audio/"
 AUDIO_FILE = "audio.wav"
 ANDROID_DEMO_PATH = "demoapp"
 ANDROID_DOWNLOAD_PATH = "Download"

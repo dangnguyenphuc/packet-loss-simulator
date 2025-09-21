@@ -13,34 +13,11 @@
       <template v-else-if="result.status === RES_STATUS.SUCCESS">
         <v-col>
           <v-list>
-            <v-list-item v-for="audioFile in result.audioFiles" :key="audioFile">{{ audioFile }}</v-list-item>
+            <v-list-item v-for="audioFile in result.audioFiles" :key="audioFile">
+              <AudioPlayer :title='audioFile.split("/").at(-1).split("_")[0].toUpperCase()' :audioURL="audioFile"/>
+            </v-list-item>
           </v-list>
-          <!-- <v-select
-            v-model="result.selectedAudio"
-            :items="result.audioFiles"
-            label="Audio Files"
-            dense
-            @update:model-value="onAudioChange"
-            hide-details
-          /> -->
         </v-col>
-
-        <!-- Play / Stop -->
-        <!-- <v-col cols="2" class="d-flex align-center ga-2">
-          <v-btn
-            icon="mdi-play"
-            color="primary"
-            density="compact"
-            @click="playAudio(result.selectedAudio)"
-          />
-          <v-btn
-            icon="mdi-stop"
-            color="red"
-            density="compact"
-            @click="stopAudio"
-          />
-        </v-col> -->
-
         <!-- Log file -->
         <v-col>
           <v-text-field
@@ -65,9 +42,11 @@
 
 <script>
 import { RES_STATUS } from "../../constants/enums";
+import AudioPlayer from "../AudioPlayer.vue";
 
 export default {
   name: "Result",
+  components: {AudioPlayer},
   props: {
     result: {
       type: Object,
