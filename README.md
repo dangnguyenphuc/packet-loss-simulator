@@ -10,10 +10,32 @@
 - Atc requirements: Python 2.7
 
 ## 2. How to run
-	
-### 2.1 ATC tool:
 
-- [Install Python2.7](https://gist.github.com/ckandoth/f25c7469f23e63e34bee346fcb10ec29)
+### 2.0 Install Python
+
+- Install pyenv:
+
+```bash
+curl -fsSL https://pyenv.run | bash 	# Linux based OS
+brew install pyenv 						# MacOS
+```
+
+- Set up global install specific python version:
+
+```bash
+# Example
+pyenv install 3.8.6
+pyenv install 3.13
+pyenv install 2.7
+```
+
+- Set global and local python version:
+
+```bash
+pyenv global 3.13 						# for all directory
+pyenv local 3.8							# apply python3.8 for current folder
+```
+### 2.1 ATC tool:
 
 - Change dir to augmented-traffic-control folder (project cloned at github)
 		
