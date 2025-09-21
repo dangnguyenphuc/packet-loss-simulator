@@ -9,6 +9,8 @@ import shutil
 import subprocess
 from datetime import datetime
 import wave
+from django.conf import settings 
+
 class DateTimeUtils:
     @staticmethod
     def getTimestamped():
@@ -103,11 +105,6 @@ class FileUtils:
     def listAllJsonFiles(folderPath: str = JSON_CONFIG_FOLDER) -> list[str]:
         res = FileUtils.listFile(folderPath, type="json")
         res.sort()
-        return res
-
-    @staticmethod
-    def listAllLossStrategyFiles(folderPath: str = LOSS_STRATEGIES_FOLDER) -> dict[str, int]:
-        res = FileUtils.listFile(folderPath, type="json")
         return res
 
     @staticmethod

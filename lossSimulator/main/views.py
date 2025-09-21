@@ -6,6 +6,9 @@ from utils.utils import NetworkUtils, FileUtils, AdbUtils, AudioUtils
 from utils.android import AndroidAppController
 import json
 from utils.constants import DEFAULT_EVAL_TIMEOUT, DESKTOP_STATIC_FOLDER
+from django.conf import settings
+import threading, uuid
+from django.core.cache import cache
 
 def listJsonFiles(request):
     if request.method == "GET":
@@ -50,6 +53,12 @@ def getInfo(request):
             }
         })
 
+def checkTask(request, taskId):
+    result = cache.get(taskId)
+    if result:
+        return JsonResponse({"status": "done", "result": result})
+    return JsonResponse({"status": "failed"}) 
+
 @csrf_exempt
 def runZrtcAndroidApp(request):
     try :
@@ -69,24 +78,27 @@ def runZrtcAndroidApp(request):
         timeout = requestData["time"]
     else:
         timeout = DEFAULT_EVAL_TIMEOUT
+    taskId = str(uuid.uuid4())
+    startedEvent = threading.Event()
+
+    thread = threading.Thread(target=runApp, args=(taskId, deviceId, timeout, startedEvent))
+    thread.start()
+    startedEvent.wait()
+    return JsonResponse({"status": "started", "taskId": taskId})
+
+def runApp(taskId, deviceId, timeout, startedEvent):
     controller = AndroidAppController(deviceId=deviceId)
     controller.stopAll()
     controller.sleep(2)
     try:
-        controller.startEval(timeout=timeout)
-
-        staticFolder = DESKTOP_STATIC_FOLDER + controller.timestamp
-
-        return JsonResponse({
+        controller.startEval(startedEvent, timeout=timeout)
+        staticFolder = str(settings.BASE_DIR) + "/" + DESKTOP_STATIC_FOLDER + controller.timestamp
+        result = {
             "audioFiles": FileUtils.getAudioFiles(staticFolder),
             "zrtcLog": FileUtils.getLogFiles(staticFolder)
-        })
-        
+        }
+        cache.set(taskId, result, timeout=10)
     except Exception as e:
         print(e)
+        startedEvent.set()
         controller.stopApp()
-        return JsonResponse({
-            "error": e
-        }, status=500)
-
-    

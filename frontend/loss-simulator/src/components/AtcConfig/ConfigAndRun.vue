@@ -78,10 +78,10 @@
 
 <script>
 import { TEST_STATUS, RES_STATUS } from "../../constants/enums";
-import { DEFAULT_ATC_TIMEOUT, EVENT_OPEN_TOAST, TOAST_TIMEOUT } from "../../constants/constant"
+import { DEFAULT_ATC_TIMEOUT, EVENT_OPEN_TOAST, TOAST_TIMEOUT, MAX_RETRIES, RETRY_DELAY } from "../../constants/constant"
 import AtcConfig from "./AtcConfig.vue";
 import Result from "./Result.vue";
-import { applyConfig, deleteShape, runApp } from "../../utils/specific";
+import { applyConfig, deleteShape, runApp, getAppRes } from "../../utils/specific";
 
 export default {
   name: "ConfigAndRun",
@@ -159,29 +159,66 @@ export default {
         try {
           this.configs[i].status = TEST_STATUS.TESTING;
           this.configs[i].result = null;
-          const runAppPromise = runApp({
+          const startAppRes = await runApp({
             deviceId: this.deviceId,
             time: totalDelay / 1000
-          }, totalDelay + 60000);
-          await new Promise((resolve) => setTimeout(resolve, 10000));
-          const configPromises = test.atcConfigs.map(async (curConfig, j) => {
+          });
+          
+          if (!startAppRes || startAppRes.status !== "started") {
+            throw new Error("Android App: Cannot start App");
+          }
+          for (let j = 0; j < test.atcConfigs.length; j++) {
+            const curConfig = test.atcConfigs[j];
+
             await applyConfig({
               data: JSON.parse(curConfig.jsonData || "{}"),
-              ip: this.deviceIp
+              ip: this.deviceIp,
             });
+            // wait timer for this config
             await new Promise((resolve) => setTimeout(resolve, timers[j]));
-          });
-          await Promise.all([runAppPromise, ...configPromises]);
-          const runResult = await runAppPromise;
-          if (!runResult) throw new Error("Android App: Got null result");
+          }
+          
           try {
             await deleteShape({ ip: this.deviceIp });
           } catch {}
+
+          let runAppRes = null;
+
+          for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+            runAppRes = await getAppRes(startAppRes.taskId);
+
+            if (
+              runAppRes &&
+              runAppRes.status === "done" &&
+              runAppRes.result.audioFiles?.length > 0 &&
+              runAppRes.result.zrtcLog?.length > 0
+            ) {
+              // Success, break the retry loop
+              break;
+            }
+
+            if (attempt < MAX_RETRIES) {
+              // Wait before retrying
+              await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY));
+            }
+          }
+
+          // After retries, validate result
+          if (
+            !runAppRes ||
+            runAppRes.status !== "done" ||
+            !runAppRes.result.audioFiles?.length ||
+            !runAppRes.result.zrtcLog?.length
+          ) {
+            throw new Error("Android App: run fail or missing audio/log files");
+          }
+
+          // Success
           test.result = {
             status: RES_STATUS.SUCCESS,
-            audioFiles: runResult.audioFiles,
-            selectedAudio: runResult.audioFiles[0],
-            logFile: runResult.zrtcLog[0],
+            audioFiles: runAppRes.result.audioFiles,
+            selectedAudio: runAppRes.result.audioFiles[0],
+            logFile: runAppRes.result.zrtcLog[0],
           };
           test.status = TEST_STATUS.PASS;
         } catch (err) {
