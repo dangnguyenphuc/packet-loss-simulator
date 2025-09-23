@@ -16,7 +16,7 @@
                     <v-expansion-panel-title>
                         <span class="title">{{ panel.title }}</span>
                     </v-expansion-panel-title>
-                    <v-expansion-panel-text>
+                    <v-expansion-panel-text eager>
                         <component
                             :is="panel.component"
                             @open:Toast="openToast"
@@ -132,7 +132,14 @@ export default {
                 this.openToast("Error Getting ATC Configs file", err.message);
             }
         },
-        openToast(header = "", message = "", timeout = TOAST_TIMEOUT) {
+        openToast(componentName = "", header = "", message = "", timeout = TOAST_TIMEOUT) {
+            switch(componentName) {
+                case "DeviceSelector":
+                    this.expanded = [1];
+                    this.panels[2].props.deviceId = "";
+                    this.selectedDevice = "";
+                    break;
+            }
             this.$emit(EVENT_OPEN_TOAST, header, message, timeout);
         },
     },

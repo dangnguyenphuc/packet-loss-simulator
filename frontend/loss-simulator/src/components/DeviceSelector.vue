@@ -34,6 +34,7 @@
 import { ref, watch } from 'vue';
 import { fetchDevices, fetchDeviceIp } from '../utils/specific.js';
 import { 
+    EVENT_OPEN_TOAST,
     EVENT_FETCH_DEVICE,
     EVENT_UPDATE_DEVICE,
     EVENT_UPDATE_DEVICE_IP
@@ -71,7 +72,7 @@ export default {
                     this.selectedDevice = "";
                     this.selectedIp = "";
                     this.ips = [];
-                    this.$emit(EVENT_FETCH_DEVICE, false);
+                    throw new Error("Got empty!");
                 }
 
                 // fetch done -> load test info
@@ -79,6 +80,7 @@ export default {
             } catch (err) {
                 this.$emit(
                     EVENT_OPEN_TOAST, 
+                    this.$options.name,
                     "Get devices failed",
                     "Error: " + err.message
                 );
@@ -105,11 +107,14 @@ export default {
                     // fetch success
                     this.selectedIp = this.ips[0].ip;
                     this.$emit(EVENT_FETCH_DEVICE, true);
+                } else {
+                    throw new Error("IP addresses: empty!")
                 }
             } catch (err) {
                 console.log(err.message)
                 this.$emit(
-                    EVENT_OPEN_TOAST, 
+                    EVENT_OPEN_TOAST,
+                    this.$options.name,
                     "Get device IP failed",
                     "Error: " + err.message
                 );

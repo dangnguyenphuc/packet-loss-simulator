@@ -100,7 +100,7 @@ export default {
         row.jsonData = JSON.stringify(res.data, null, 2);
 
       } catch (err) {
-        this.$emit(EVENT_OPEN_TOAST, "Error Getting Json file content", err.message);
+        this.$emit(EVENT_OPEN_TOAST, this.$options.name, "Error Getting Json file content", err.message);
       }
     }
   },
