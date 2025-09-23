@@ -147,7 +147,7 @@ export default {
                 this.infoFieldsAndroid[3].data = info.android.appPackage;
                 this.infoFieldsAndroid[4].data = info.android.activity;
             } catch (err) {
-                this.$emit(EVENT_OPEN_TOAST, "Get Info error", err.message);
+                this.$emit(EVENT_OPEN_TOAST, this.$options.name, "Get Info error", err.message);
             }
         },
         extractFilename(path) {
@@ -164,6 +164,40 @@ export default {
     },
     watch: {
         deviceId(newVal) {
+            if (!newVal || newVal.length <= 0) {
+                this.infoFieldsPC = [
+                    {
+                        title: 'Audio Files',
+                        data: [],
+                    },
+                    {
+                        title: 'Record Folder',
+                        data: '',
+                    },
+                ];
+                this.infoFieldsAndroid = [
+                    {
+                        title: 'Uploaded Audio Folder',
+                        data: '',
+                    },
+                    {
+                        title: 'Record Audio Folder',
+                        data: '',
+                    },
+                    {
+                        title: 'Histogram Folder',
+                        data: '',
+                    },
+                    {
+                        title: 'App Package',
+                        data: '',
+                    },
+                    {
+                        title: 'Target Activities',
+                        data: [],
+                    },
+                ];
+            }
             this.fetchTestInfo();
         },
     },

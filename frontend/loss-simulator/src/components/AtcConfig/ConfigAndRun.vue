@@ -236,8 +236,8 @@ export default {
       this.numTests = (parseInt(this.numTests, 10) - 1).toString();
     },
 
-    openToast(header = "", message = "", timeout = TOAST_TIMEOUT) {
-      this.$emit(EVENT_OPEN_TOAST, header, message, timeout);
+    openToast(componentName="", header = "", message = "", timeout = TOAST_TIMEOUT) {
+      this.$emit(EVENT_OPEN_TOAST, this.$options.name, header, message, timeout);
     },
   },
   watch: {
