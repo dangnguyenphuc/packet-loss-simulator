@@ -71,7 +71,7 @@ atcui-log:
 	@echo "[INFO] Showing logs for atcui.service..."
 	sudo journalctl -u atcui.service -f
 
-run: stop
+run: stop atc-reboot
 	@echo "[INFO] Starting project with Python=$(PYTHON3_BIN), Django port=$(PROJECT_DJANGO_PORT), Frontend port=$(PROJECT_FRONTEND_PORT)"
 	PROJECT_DIR=$(PROJECT_DIR) \
 	PYTHON_BIN=$(PYTHON3_BIN) \
