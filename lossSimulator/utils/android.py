@@ -30,7 +30,9 @@ class AndroidAppController:
             "AUDIO_FILE_PATH": self.deviceAudioFile
         }
         self.intExtras = None
-        self.boolExtras = None
+        self.boolExtras = {
+            "ENABLE_OPUS_PLC": False
+        }
         
 
     def startApp(self, packageName = None):

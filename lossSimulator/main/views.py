@@ -78,19 +78,21 @@ def runZrtcAndroidApp(request):
         timeout = requestData["time"]
     else:
         timeout = DEFAULT_EVAL_TIMEOUT
+    enableOpus = requestData.get("enableOpus", False)
     taskId = str(uuid.uuid4())
     startedEvent = threading.Event()
 
-    thread = threading.Thread(target=runApp, args=(taskId, deviceId, timeout, startedEvent))
+    thread = threading.Thread(target=runApp, args=(taskId, deviceId, enableOpus, timeout, startedEvent))
     thread.start()
     startedEvent.wait()
     return JsonResponse({"status": "started", "taskId": taskId})
 
-def runApp(taskId, deviceId, timeout, startedEvent):
+def runApp(taskId, deviceId, enableOpus, timeout, startedEvent):
     controller = AndroidAppController(deviceId=deviceId)
     controller.stopAll()
     controller.sleep(2)
     try:
+        controller.boolExtras["ENABLE_PLC_OPUS"] = enableOpus
         controller.startEval(startedEvent, timeout=timeout)
         staticFolder = str(settings.BASE_DIR) + "/" + DESKTOP_STATIC_FOLDER + controller.timestamp
         
