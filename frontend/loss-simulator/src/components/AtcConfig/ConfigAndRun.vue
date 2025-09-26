@@ -165,7 +165,7 @@ export default {
         // delete current shape
         await deleteShape({ ip: this.deviceIp });
       } catch {}
-      stopAndroidApp(this.configs[index].taskId);
+      this.stopAndroidApp(index);
       
       this.configs.splice(index, 1);
       this.expanded = this.configs.map((_, i) => i);
