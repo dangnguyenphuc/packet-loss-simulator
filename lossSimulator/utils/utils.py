@@ -10,6 +10,7 @@ import subprocess
 from datetime import datetime
 import wave
 from django.conf import settings 
+import time
 
 class DateTimeUtils:
     @staticmethod
@@ -66,6 +67,14 @@ class FileUtils:
             print("Unexpected error:", e)
 
         return ""
+
+    @staticmethod
+    def getAbsPath(filePath: str) -> str:
+        return os.path.abspath(filePath)
+    
+    @staticmethod
+    def makeDir(folderPath: str):
+        return os.makedirs(folderPath, exist_ok=True)
 
     @staticmethod
     def saveJsonFile(data, filePath: str, folderPath: str = JSON_CONFIG_FOLDER) -> bool:
@@ -294,16 +303,22 @@ class AdbUtils:
         except Exception as e:
             raise e
 
-    def pullFiles(src, des, deviceId=None):
+    def pullFiles(src, des, deviceId=None, retries=DEFAULT_RETRY):
         cmd = ["adb"]
         if deviceId:
             cmd += ["-s", deviceId]
         cmd += ["pull", src, des]
 
-        try:
-            subprocess.run(cmd, check=True)
-        except subprocess.CalledProcessError as e:
-            raise e
+        attempt = 0
+        while attempt < retries:
+            try:
+                subprocess.run(cmd, check=True, capture_output=True, text=True)
+                return
+            except subprocess.CalledProcessError as e:
+                attempt += 1
+                if attempt > retries:
+                    raise
+                time.sleep(1)
 
     @staticmethod
     def pushFile(src, dest, deviceId=None):
