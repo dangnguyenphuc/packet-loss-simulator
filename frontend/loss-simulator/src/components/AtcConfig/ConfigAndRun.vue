@@ -23,8 +23,8 @@
           <!-- Title -->
           <v-expansion-panel-title>
             <v-row class="w-100 d-flex align-center">
-              <v-col cols="6"> Test #{{ index + 1 }} </v-col>
-              <v-col cols="6" class="d-flex justify-end align-center ga-2">
+              <v-col> Test #{{ index + 1 }} </v-col>
+              <v-col class="d-flex justify-end align-center ga-2">
                 <v-btn 
                   @click.stop="deleteTest(index)" 
                   color="red" 
@@ -53,6 +53,11 @@
 
           <!-- Panel Content -->
           <v-expansion-panel-text>
+            <v-checkbox
+                  v-model="test.enableOpusPlc"
+                  label="Enable Opus PLC"
+                  class="d-flex align-center justify-start"
+            />
             <AtcConfig 
               @open:Toast="openToast"
               @stop:AndroidApp="() => stopAndroidApp(index)"
@@ -133,6 +138,7 @@ export default {
         ],
         taskId: "",
         cancelled: false,
+        enableOpusPlc: false,
         result: null,
       };
     },
@@ -196,7 +202,14 @@ export default {
           this.configs[index].result = null;
           const startAppRes = await runApp({
             deviceId: this.deviceId,
-            time: totalDelay / 1000
+            time: totalDelay / 1000,
+            enableOpusPlc: test.enableOpusPlc
+          });
+
+          console.log("start app with payload:", {
+            deviceId: this.deviceId,
+            time: totalDelay / 1000,
+            enableOpusPlc: test.enableOpusPlc
           });
           
           if (!startAppRes || startAppRes.status !== "started") {
