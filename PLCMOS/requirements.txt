@@ -1,0 +1,6 @@
+onnxruntime
+numpy
+openpyxl
+soundfile
+pandas
+tqdm
