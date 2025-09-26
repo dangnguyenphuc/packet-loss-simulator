@@ -31,7 +31,6 @@
 </template>
 
 <script>
-import { ref, watch } from 'vue';
 import { fetchDevices, fetchDeviceIp } from '../utils/specific.js';
 import { 
     EVENT_OPEN_TOAST,
@@ -42,10 +41,6 @@ import {
 
 export default {
     name: 'DeviceSelector',
-    props: {
-        device: String,
-        ip: String,
-    },
     data() {
         return {
             
@@ -53,8 +48,8 @@ export default {
             ips: [],
             loadingDevices: false,
             loadingIps: false,
-            selectedDevice: this.device,
-            selectedIp: this.ip,
+            selectedDevice: "",
+            selectedIp: "",
         };
     },
     methods: {

@@ -32,14 +32,17 @@
       </v-col>
       
     </v-row>
-    <v-row  v-if="!result" class="d-flex justify-center align-center pa-0 ga-3">
+    <v-row class="d-flex justify-center align-center pa-0 ga-3">
       <v-btn density="compact" icon="mdi-plus" @click="addRow"></v-btn>
       <v-btn density="compact" icon="mdi-restart" @click="resetRows"></v-btn>
+    </v-row>
+    <v-row class="d-flex justify-center align-center pa-0 ga-3">
+      <v-btn density="compact" color="red" prepend-icon="mdi-stop-circle" @click='stopApp' :disabled="taskId.length <= 0">Stop</v-btn>
+      <v-btn density="compact" color="green" prepend-icon="mdi-play-circle" @click='startApp' :disabled="taskId != '' && !result">Run Test</v-btn>
     </v-row>
     <v-row>
       <Result v-if="result" :result="result" />
     </v-row>
-
   </v-container>
 </template>
 
@@ -49,7 +52,7 @@ import Timer from '../Timer.vue';
 import Result from './Result.vue'
 import { RES_STATUS } from "../../constants/enums";
 import { fetchJsonContent } from '../../utils/specific';
-import { EVENT_OPEN_TOAST, EVENT_UPDATE_MODEL, DEFAULT_ATC_TIMEOUT } from "../../constants/constant"
+import { EVENT_OPEN_TOAST, EVENT_UPDATE_MODEL, DEFAULT_ATC_TIMEOUT, EVENT_STOP_APP, EVENT_START_APP } from "../../constants/constant"
 
 export default {
   name: "AtcConfig",
@@ -62,6 +65,9 @@ export default {
       default: []
     },
     result: {
+      required: true
+    },
+    taskId: {
       required: true
     }
   },
@@ -102,6 +108,14 @@ export default {
       } catch (err) {
         this.$emit(EVENT_OPEN_TOAST, this.$options.name, "Error Getting Json file content", err.message);
       }
+    },
+
+    stopApp() {
+      this.$emit(EVENT_STOP_APP);
+    },
+
+    startApp() {
+      this.$emit(EVENT_START_APP);
     }
   },
   watch: {

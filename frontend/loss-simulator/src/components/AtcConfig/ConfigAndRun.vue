@@ -54,8 +54,11 @@
           <!-- Panel Content -->
           <v-expansion-panel-text>
             <AtcConfig 
-              @open:Toast="openToast" 
-              v-model="test.atcConfigs" 
+              @open:Toast="openToast"
+              @stop:AndroidApp="() => stopAndroidApp(index)"
+              @start:AndroidApp="() => startAndroidApp(index)"
+              v-model="test.atcConfigs"
+              :taskId="test.taskId"
               :result="test.result" 
               :definedConfig="atcConfigs"
             />
@@ -70,7 +73,7 @@
         <v-btn color="green" variant="tonal" @click="addTest">Add Test</v-btn>
       </v-col>
       <v-col class="d-flex flex-row justify-end align-center ga-3">
-        <v-btn color="primary" @click="runTests" :disabled="this.configs.length === 0">Run</v-btn> 
+        <v-btn color="primary" @click="runTests" :disabled="this.configs.length === 0">Run All Tests</v-btn> 
       </v-col>
     </v-row>
   </v-container>
@@ -81,7 +84,7 @@ import { TEST_STATUS, RES_STATUS } from "../../constants/enums";
 import { DEFAULT_ATC_TIMEOUT, EVENT_OPEN_TOAST, TOAST_TIMEOUT, MAX_RETRIES, RETRY_DELAY } from "../../constants/constant"
 import AtcConfig from "./AtcConfig.vue";
 import Result from "./Result.vue";
-import { applyConfig, deleteShape, runApp, getAppRes } from "../../utils/specific";
+import { applyConfig, deleteShape, runApp, getAppRes, stopApp } from "../../utils/specific";
 
 export default {
   name: "ConfigAndRun",
@@ -128,6 +131,8 @@ export default {
             timer: { h: 0, m: 0, s: DEFAULT_ATC_TIMEOUT/1000 },
           }
         ],
+        taskId: "",
+        cancelled: false,
         result: null,
       };
     },
@@ -145,7 +150,37 @@ export default {
 
     async runTests() {
       for (let i = 0; i < this.configs.length; i++) {
-        const test = this.configs[i];
+        await this.startAndroidApp(i);
+      }
+    },
+    
+    async deleteTest(index) {
+      try {
+        // delete current shape
+        await deleteShape({ ip: this.deviceIp });
+      } catch {}
+      stopAndroidApp(this.configs[index].taskId);
+      
+      this.configs.splice(index, 1);
+      this.expanded = this.configs.map((_, i) => i);
+      this.numTests = (parseInt(this.numTests, 10) - 1).toString();
+    },
+
+    async stopAndroidApp(index) {
+      try {
+        if (this.configs[index].taskId && this.configs[index].taskId.length > 0)
+          await stopApp(this.configs[index].taskId);
+      } catch {}
+      this.configs[index].taskId = "";
+      this.configs[index].result = null;
+      this.configs[index].cancelled = true;
+      this.configs[index].status = TEST_STATUS.PENDING;
+    },
+
+    async startAndroidApp(index) {
+      this.configs[index].cancelled = false;
+      this.configs[index].result = null;
+      const test = this.configs[index];
         let totalDelay = 0;
         const timers = test.atcConfigs.map(({ timer }) => {
           const { h, m, s } = timer;
@@ -157,8 +192,8 @@ export default {
           return delay;
         });
         try {
-          this.configs[i].status = TEST_STATUS.TESTING;
-          this.configs[i].result = null;
+          this.configs[index].status = TEST_STATUS.TESTING;
+          this.configs[index].result = null;
           const startAppRes = await runApp({
             deviceId: this.deviceId,
             time: totalDelay / 1000
@@ -167,7 +202,10 @@ export default {
           if (!startAppRes || startAppRes.status !== "started") {
             throw new Error("Android App: Cannot start App");
           }
+
+          this.configs[index].taskId = startAppRes.taskId;
           for (let j = 0; j < test.atcConfigs.length; j++) {
+            if (this.configs[index].cancelled) return;
             const curConfig = test.atcConfigs[j];
 
             await applyConfig({
@@ -177,14 +215,15 @@ export default {
             // wait timer for this config
             await new Promise((resolve) => setTimeout(resolve, timers[j]));
           }
-          
+
+          if (this.configs[index].cancelled) return;
           try {
             await deleteShape({ ip: this.deviceIp });
           } catch {}
-
           let runAppRes = null;
 
           for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+            if (this.configs[index].cancelled) return;
             runAppRes = await getAppRes(startAppRes.taskId);
 
             if (
@@ -220,20 +259,15 @@ export default {
             logFile: runAppRes.result.zrtcLog[0],
           };
           test.status = TEST_STATUS.PASS;
+          this.configs[index].taskId = "";
         } catch (err) {
+          if (this.configs[index].cancelled) return;
           test.result = {
             status: RES_STATUS.FAILED,
             errorMessage: err.message,
           };
           test.status = TEST_STATUS.FAIL;
         }
-      }
-    },
-    
-    deleteTest(index) {
-      this.configs.splice(index, 1);
-      this.expanded = this.configs.map((_, i) => i);
-      this.numTests = (parseInt(this.numTests, 10) - 1).toString();
     },
 
     openToast(componentName="", header = "", message = "", timeout = TOAST_TIMEOUT) {

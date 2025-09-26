@@ -1,5 +1,9 @@
 <template>
-    <v-row class="d-flex justify-center align-center pa-0 ga-3">
+  <v-divider :thickness="2" color="black"></v-divider>
+    <v-row class="d-flex justify-center align-center pa-2 ga-3">
+      <v-col cols="12" class="d-flex justify-start align-center">
+        <h3>Test Result:</h3>
+      </v-col>
       <!-- Failed -->
       <template v-if="result.status === RES_STATUS.FAILED">
         <v-col>
