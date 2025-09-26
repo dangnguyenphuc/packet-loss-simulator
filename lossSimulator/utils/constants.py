@@ -15,6 +15,7 @@ LOG_TYPE = ".log"
 # ========================== ANDROID Constants ========================
 # =====================================================================
 DEFAULT_TIMEOUT = 5
+DEFAULT_RETRY = 3
 DEFAULT_EVAL_TIMEOUT = 30
 
 class CALL_OPTION(Enum):
