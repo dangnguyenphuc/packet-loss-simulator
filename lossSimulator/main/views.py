@@ -126,7 +126,6 @@ def stopZrtcAndroidApp(taskId):
 def runApp(taskId, deviceId, enableOpusPlc, timeout, startEvent, stopEvent):
     controller = AndroidAppController(deviceId=deviceId)
     controller.stopAll()
-    controller.sleep()
     try:
         controller.boolExtras["ENABLE_OPUS_PLC"] = enableOpusPlc
         controller.startEval(startEvent)
@@ -137,10 +136,10 @@ def runApp(taskId, deviceId, enableOpusPlc, timeout, startEvent, stopEvent):
                 controller.stopApp()
                 return
             time.sleep(1)
-
-
+        
+        controller.press("back")
+        controller.press("back")
         controller.stopApp()
-        time.sleep(2)
 
         staticFolder = FileUtils.getAbsPath(str(settings.BASE_DIR) + "/" + DESKTOP_STATIC_FOLDER)
         specificFolder = staticFolder + "/" + controller.timestamp

@@ -321,19 +321,23 @@ class AdbUtils:
                 time.sleep(1)
 
     @staticmethod
-    def pushFile(src, dest, deviceId=None):
+    def pushFile(src, dest, deviceId=None, retries=DEFAULT_RETRY):
 
         cmd = ["adb"]
         if deviceId:
             cmd += ["-s", deviceId]
         cmd += ["push", src, dest]
 
-        try:
-            result = subprocess.run(cmd, capture_output=True, text=True, check=True)
-            return True
-        except subprocess.CalledProcessError as e:
-            print(e.stderr)
-            return False
+        attempt = 0
+        while attempt < retries:
+            try:
+                subprocess.run(cmd, capture_output=True, text=True, check=True)
+                return
+            except subprocess.CalledProcessError as e:
+                attempt += 1
+                if attempt > retries:
+                    raise
+                time.sleep(1)
     
     @staticmethod
     def isFileExists(path, deviceId = None):
