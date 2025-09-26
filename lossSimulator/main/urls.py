@@ -8,5 +8,5 @@ urlpatterns = [
     path("api/ip/<str:deviceId>", views.getDeviceIps, name="getDeviceIps"),
     path("api/info", views.getInfo, name="getInfo"),
     path("api/run", views.runZrtcAndroidApp, name="runZrtcAndroidApp"),
-    path("api/run/<str:taskId>", views.checkTask, name="checkTask"),
+    path("api/run/<str:taskId>", views.runTaskHandler, name="runTaskHandler"),
 ]
