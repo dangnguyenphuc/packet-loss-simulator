@@ -11,8 +11,8 @@ export const GUIDE_TEXT = `Requirements:
 
 export const TOAST_TIMEOUT = 3000;
 export const DEFAULT_ATC_TIMEOUT = 10000;
-export const MAX_RETRIES = 3;
-export const RETRY_DELAY = 1500;
+export const MAX_RETRIES = 5;
+export const RETRY_DELAY = 2000;
 /*
 \\\\\\\\\\\\\\\\\\\\\\\\
 Emit events: -----------
@@ -30,3 +30,6 @@ export const EVENT_FETCH_DEVICE = "fetch:device";
 export const EVENT_UPDATE_TIMER_H = "update:hour";
 export const EVENT_UPDATE_TIMER_M = "update:minute";
 export const EVENT_UPDATE_TIMER_S = "update:second";
+
+export const EVENT_START_APP = "start:AndroidApp";
+export const EVENT_STOP_APP = "stop:AndroidApp";
