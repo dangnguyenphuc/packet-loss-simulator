@@ -78,11 +78,12 @@ def runZrtcAndroidApp(request):
     else:
         timeout = DEFAULT_EVAL_TIMEOUT
     enableOpusPlc = requestData.get("enableOpusPlc", True)
+    complexity = requestData.get("complexity", 6)
     taskId = str(uuid.uuid4())
     startEvent = threading.Event()
     stopEvent = threading.Event()
 
-    thread = threading.Thread(target=runApp, args=(taskId, deviceId, enableOpusPlc, timeout, startEvent, stopEvent))
+    thread = threading.Thread(target=runApp, args=(taskId, deviceId, enableOpusPlc, timeout, startEvent, stopEvent, complexity))
 
     with tasksLock:
         runningTasks[taskId] = {
@@ -123,11 +124,13 @@ def stopZrtcAndroidApp(taskId):
     return JsonResponse({"status": "stopping", "taskId": taskId})
 
 
-def runApp(taskId, deviceId, enableOpusPlc, timeout, startEvent, stopEvent):
+def runApp(taskId, deviceId, enableOpusPlc, timeout, startEvent, stopEvent, complexity=None):
     controller = AndroidAppController(deviceId=deviceId)
     controller.stopAll()
     try:
         controller.boolExtras["ENABLE_OPUS_PLC"] = enableOpusPlc
+        if complexity is not None:
+            controller.stringExtras["OPUS_COMPLEXITY"] = complexity
         controller.startEval(startEvent)
 
         startTime = time.time()
