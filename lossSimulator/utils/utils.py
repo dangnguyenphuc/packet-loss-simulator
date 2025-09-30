@@ -57,6 +57,7 @@ class FileUtils:
 
     @staticmethod
     def removeStoringFolder(folder):
+        folder = FileUtils.getAbsPath(str(settings.BASE_DIR) + "/" + DESKTOP_STATIC_FOLDER) + "/" + folder
         shutil.rmtree(folder, ignore_errors=True)
 
     @staticmethod
@@ -380,7 +381,7 @@ class AdbUtils:
         cmd = ["adb"]
         if deviceId:
             cmd += ["-s", deviceId]
-
+            
         cmd += ["shell", f"rm -rf {path}"]
 
         subprocess.run(cmd, capture_output=True, text=True)

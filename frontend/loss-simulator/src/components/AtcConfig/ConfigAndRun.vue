@@ -392,7 +392,7 @@ export default {
             if (runAppRes.result.zrtcLog?.length > 0) {
               err.storeFolder = runAppRes.result.zrtcLog[0]
                                 .split("/")
-                                .slice(0, -1)
+                                .slice(-2, -1)
                                 .join("/");
               throw err;
             }
@@ -405,7 +405,7 @@ export default {
               const err = new Error(`Android App: Invalid audio file: ${audio}`);
               err.storeFolder = runAppRes.result.zrtcLog[0]
                                 .split("/")
-                                .slice(0, -1)
+                                .slice(-2, -1)
                                 .join("/");
               throw err;
             }
