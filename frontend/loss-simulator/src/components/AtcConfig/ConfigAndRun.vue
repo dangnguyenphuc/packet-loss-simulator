@@ -123,7 +123,7 @@ import {
 } from "../../constants/constant"
 import AtcConfig from "./AtcConfig.vue";
 import Result from "./Result.vue";
-import { applyConfig, deleteShape, runApp, getAppRes, stopApp } from "../../utils/specific";
+import { applyConfig, deleteShape, runApp, getAppRes, stopApp, removeFolder } from "../../utils/specific";
 
 export default {
   name: "ConfigAndRun",
@@ -178,15 +178,14 @@ export default {
         const curLoss = EVAL_LOSS_PERCENTAGE[i%EVAL_LOSS_PERCENTAGE.length];
 
         try {
-          let json = JSON.parse(curNetworkType);
+          let json = JSON.parse(networkData);
           json.down.loss.percentage = curLoss;
-          curNetworkType = JSON.stringify(json);
+          networkData = JSON.stringify(json);
         } catch {}
         // console.log(`Test ${i}\nComplex: ${curComplex}\nPLC Flag: ${curUsePlcFlag}\nNetType: ${networkType}\njson: ${networkData}`)
         this.configs.push(this.createTestWithParams(curComplex, curUsePlcFlag, networkType, networkData));
       }
 
-      console.log(this.configs[0])
       // this.configs = Array.from({ length: NUMBER_OF_SAMPLE_CONFIGS }, (_, i) => this.createTest(i));
       // this.expanded = this.configs.map((_, i) => i);
     },
@@ -217,7 +216,7 @@ export default {
         status: TEST_STATUS.PENDING,
         atcConfigs: [
           {
-            id: Date.now() + "_" + `${complexity}_${usePlc}`,
+            id: Date.now() + "_" + `${complexity}_${usePlc}_0`,
             select: networkType,
             jsonData: jsonString,
             timer: { h: 0, m: 0, s: DEFAULT_ATC_TIMEOUT/1000 },
@@ -246,12 +245,12 @@ export default {
       for (let i = 0; i < this.configs.length; i++) {
         this.configs[i].taskId = "";
         this.configs[i].result = null;
-        this.configs[i].cancelled = true;
+        this.configs[i].cancelled = false;
         this.configs[i].status = TEST_STATUS.PENDING;
       }
       
       for (let i = 0; i < this.configs.length; i++) {
-        while (true) {
+        while (true && !this.configs[i].cancelled) {
           await this.startAndroidApp(i);
           await new Promise((resolve) => setTimeout(resolve, 2000));
 
@@ -329,13 +328,13 @@ export default {
             complexity: test.complexity
           });
 
-          console.log("run app with params:", {
-            deviceId: this.deviceId,
-            time: totalDelay / 1000,
-            enableOpusPlc: test.enableOpusPlc,
-            folderName: atcConfigName,
-            complexity: test.complexity
-          })
+          // console.log("run app with params:", {
+          //   deviceId: this.deviceId,
+          //   time: totalDelay / 1000,
+          //   enableOpusPlc: test.enableOpusPlc,
+          //   folderName: atcConfigName,
+          //   complexity: test.complexity
+          // })
           
           if (!startAppRes || startAppRes.status !== "started") {
             throw new Error("Android App: Cannot start App");
@@ -389,18 +388,28 @@ export default {
             !runAppRes.result.audioFiles?.length ||
             !runAppRes.result.zrtcLog?.length
           ) {
-            throw new Error("Android App: run fail or missing audio/log files");
+            const err = new Error("Android App: run fail or missing audio/log files");
+            if (runAppRes.result.zrtcLog?.length > 0) {
+              err.storeFolder = runAppRes.result.zrtcLog[0]
+                                .split("/")
+                                .slice(0, -1)
+                                .join("/");
+              throw err;
+            }
           }
 
           const numberOfAudioFiles = runAppRes.result.audioFiles.length;
           for (const audio of runAppRes.result.audioFiles) {
             const duration = await this.getWavDuration(audio)
-            if (duration < totalDelay / 1000 - 1 && numberOfAudioFiles > 3) {
-              console.log(duration)
-              throw new Error(`Android App: Invalid audio file: ${audio}`)
+            if (duration < totalDelay / 1000 - 1 && numberOfAudioFiles <= 3) {
+              const err = new Error(`Android App: Invalid audio file: ${audio}`);
+              err.storeFolder = runAppRes.result.zrtcLog[0]
+                                .split("/")
+                                .slice(0, -1)
+                                .join("/");
+              throw err;
             }
           }
-
 
           // Success
           test.result = {
@@ -411,6 +420,10 @@ export default {
           test.status = TEST_STATUS.PASS;
           this.configs[index].taskId = "";
         } catch (err) {
+          try {
+            if (err.storeFolder)
+              removeFolder(err.storeFolder);
+          } catch {}
           // this.stopAndroidApp(index);
           if (this.configs[index].cancelled) return;
           test.result = {

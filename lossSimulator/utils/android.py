@@ -18,11 +18,12 @@ class AndroidAppController:
         self.defaultPath = AdbUtils.getDownloadsPath(self.d.serial) + "/" + path
         self.timestamp = DateTimeUtils.getTimestamped()
         self.storePath = self.defaultPath + "/" + self.timestamp
+        AdbUtils.removeFolder(self.defaultPath)
         AdbUtils.createTmpDir(self.storePath, self.d.serial)
 
         self.deviceAudioFile = self.defaultPath + "/" + AUDIO_FILE
         AdbUtils.pushFile(STATIC_FOLDER + AUDIO_FILE, self.deviceAudioFile)
-        time.sleep(3)
+        time.sleep(4)
 
         self.stringExtras = {
             "CALL_MODE": callMode,

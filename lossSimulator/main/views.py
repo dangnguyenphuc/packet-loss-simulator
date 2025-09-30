@@ -84,8 +84,6 @@ def runZrtcAndroidApp(request):
     startEvent = threading.Event()
     stopEvent = threading.Event()
 
-    enableOpusPlc = True
-
     thread = threading.Thread(target=runApp, args=(taskId, deviceId, enableOpusPlc, timeout, startEvent, stopEvent, complexity, folderName))
 
     with tasksLock:
@@ -178,3 +176,12 @@ def runApp(taskId, deviceId, enableOpusPlc, timeout, startEvent, stopEvent, comp
         with tasksLock:
             runningTasks.pop(taskId, None)
         print(f"[runApp] Task {taskId} removed from runningTasks")
+
+@csrf_exempt
+def fileHanldler(request, folderName):
+    if request.method == "DELETE":
+        # remove storing folder 
+        FileUtils.removeStoringFolder(folderName)
+        return JsonResponse()
+    else:
+        return HttpResponseNotFound("Not found")

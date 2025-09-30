@@ -14,7 +14,7 @@ export const DEFAULT_ATC_TIMEOUT = 20000;
 export const MAX_RETRIES = 5;
 export const RETRY_DELAY = 2000;
 
-export const EVAL_COMPLEX = [6,8,10];
+export const EVAL_COMPLEX = [5,6,7,8,9,10];
 export const EVAL_NETWORK_TYPE = [
 	// 3g-good
 	{
@@ -28,7 +28,7 @@ export const EVAL_NETWORK_TYPE = [
 	}
 
 ]
-export const EVAL_LOSS_PERCENTAGE = [0,3,6,9,12,15]
+export const EVAL_LOSS_PERCENTAGE = [21,18,15,12,9,6,3,0]
 export const EVAL_NORMAL_AND_PLC = ['normal', 'plc']
 export const NUMBER_OF_SAMPLE_CONFIGS = EVAL_COMPLEX.length * EVAL_NETWORK_TYPE.length * EVAL_LOSS_PERCENTAGE.length * EVAL_NORMAL_AND_PLC.length;
 

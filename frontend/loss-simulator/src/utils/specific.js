@@ -4,7 +4,8 @@ import {
     PROXY_ENDPOINT, 
     IP_ENDPOINT,
     JSON_ENDPOINT,
-    ANDROID_RUN_ENDPOINT
+    ANDROID_RUN_ENDPOINT,
+    STORE_FOLDER_ENDPOINT
 } from '../constants/api.js';
 
 export async function fetchDevices() {
@@ -106,6 +107,14 @@ export async function stopApp(taskId, endpoint = ANDROID_RUN_ENDPOINT) {
     try {
         return await axiosDelete(`${endpoint}/${taskId}`);
     } catch (err) {
-        throw new Error(`[GET] ${endpoint} failed: ${err.message}`);
+        throw new Error(`[DELETE] ${endpoint} failed: ${err.message}`);
+    }
+}
+
+export async function removeFolder(folderName, endpoint = STORE_FOLDER_ENDPOINT) {
+    try {
+        return await axiosDelete(`${endpoint}/${folderName}`);
+    } catch (err) {
+        throw new Error(`[DELETE] ${endpoint} failed: ${err.message}`);
     }
 }

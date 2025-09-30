@@ -55,6 +55,11 @@ class NetworkUtils:
 
 class FileUtils:
 
+    @staticmethod
+    def removeStoringFolder(folder):
+        shutil.rmtree(folder, ignore_errors=True)
+
+    @staticmethod
     def moveFiles(src, dest):
         for filename in os.listdir(src):
             src_path = os.path.join(src, filename)
@@ -369,6 +374,16 @@ class AdbUtils:
 
         result = subprocess.run(cmd, capture_output=True, text=True)
         return result.stdout.strip() == "1"
+    
+    @staticmethod
+    def removeFolder(path, deviceId=None):
+        cmd = ["adb"]
+        if deviceId:
+            cmd += ["-s", deviceId]
+
+        cmd += ["shell", f"rm -rf {path}"]
+
+        subprocess.run(cmd, capture_output=True, text=True)
 
     @staticmethod
     def getDownloadsPath(deviceId = None):
