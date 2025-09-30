@@ -2,6 +2,7 @@ from .utils import AdbUtils, DateTimeUtils
 from .constants import *
 from django.conf import settings
 import uiautomator2 as u2
+import time
 
 class AndroidAppController:
     def __init__(self, deviceId=None, packageName = APP_PACKAGE, path = ANDROID_DEMO_PATH, callMode = CALL_MODE.AUDIO, callOption = CALL_OPTION.LOOPBACK_SERVER.value):
@@ -21,6 +22,7 @@ class AndroidAppController:
 
         self.deviceAudioFile = self.defaultPath + "/" + AUDIO_FILE
         AdbUtils.pushFile(STATIC_FOLDER + AUDIO_FILE, self.deviceAudioFile)
+        time.sleep(3)
 
         self.stringExtras = {
             "CALL_MODE": callMode,

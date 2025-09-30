@@ -10,8 +10,6 @@
           <v-select 
           v-model="row.select" 
           :items="selectorOptions" 
-          item-title="title"
-          item-value="value"
           hide-details
           @update:modelValue="onConfigSelected(row, $event)"
         />

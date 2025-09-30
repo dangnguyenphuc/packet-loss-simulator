@@ -78,12 +78,15 @@ def runZrtcAndroidApp(request):
     else:
         timeout = DEFAULT_EVAL_TIMEOUT
     enableOpusPlc = requestData.get("enableOpusPlc", True)
-    complexity = requestData.get("complexity", 6)
+    complexity = requestData.get("complexity", 5)
+    folderName = requestData.get("folderName", None)
     taskId = str(uuid.uuid4())
     startEvent = threading.Event()
     stopEvent = threading.Event()
 
-    thread = threading.Thread(target=runApp, args=(taskId, deviceId, enableOpusPlc, timeout, startEvent, stopEvent, complexity))
+    enableOpusPlc = True
+
+    thread = threading.Thread(target=runApp, args=(taskId, deviceId, enableOpusPlc, timeout, startEvent, stopEvent, complexity, folderName))
 
     with tasksLock:
         runningTasks[taskId] = {
@@ -124,13 +127,12 @@ def stopZrtcAndroidApp(taskId):
     return JsonResponse({"status": "stopping", "taskId": taskId})
 
 
-def runApp(taskId, deviceId, enableOpusPlc, timeout, startEvent, stopEvent, complexity=None):
+def runApp(taskId, deviceId, enableOpusPlc, timeout, startEvent, stopEvent, complexity=None, folderName=None):
     controller = AndroidAppController(deviceId=deviceId)
     controller.stopAll()
     try:
         controller.boolExtras["ENABLE_OPUS_PLC"] = enableOpusPlc
-        if complexity is not None:
-            controller.stringExtras["OPUS_COMPLEXITY"] = complexity
+        controller.stringExtras["OPUS_COMPLEXITY"] = complexity
         controller.startEval(startEvent)
 
         startTime = time.time()
@@ -145,17 +147,17 @@ def runApp(taskId, deviceId, enableOpusPlc, timeout, startEvent, stopEvent, comp
         controller.stopApp()
 
         staticFolder = FileUtils.getAbsPath(str(settings.BASE_DIR) + "/" + DESKTOP_STATIC_FOLDER)
-        specificFolder = staticFolder + "/" + controller.timestamp
+        specificFolder = staticFolder + "/" + f"com{complexity}_{"plc_" if enableOpusPlc else "normal_"}{folderName + "_" if folderName is not None else ""}{controller.timestamp}"
         # pull audio files
         FileUtils.makeDir(specificFolder)
-        AdbUtils.pullFiles(controller.storePath, staticFolder, deviceId)
+        AdbUtils.pullFiles(controller.storePath, specificFolder, deviceId)
         AdbUtils.pullFiles(
             AdbUtils.getHistogramPath(),
             specificFolder,
             deviceId
         )
 
-        
+        FileUtils.moveFiles(specificFolder + "/" + controller.timestamp, specificFolder)
 
         audioFiles = FileUtils.getAudioFiles(specificFolder)
         logFiles = FileUtils.getLogFiles(specificFolder)

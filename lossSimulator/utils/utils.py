@@ -7,7 +7,7 @@ import requests
 from .constants import *
 import shutil
 import subprocess
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 import wave
 from django.conf import settings 
 import time
@@ -15,7 +15,8 @@ import time
 class DateTimeUtils:
     @staticmethod
     def getTimestamped():
-        return datetime.now().strftime("%d-%m-%Y_%H%M%S")
+        tz = timezone(timedelta(hours=7))
+        return datetime.now(tz).strftime("%d-%m-%Y_%H%M%S")
 class AudioUtils:
     def getAudioDuration(filePath: str) -> float:
         with wave.open(filePath, "rb") as wavFile:
@@ -53,6 +54,16 @@ class NetworkUtils:
     #     return [host for host in nm.all_hosts() if nm[host].state() == "up"]
 
 class FileUtils:
+
+    def moveFiles(src, dest):
+        for filename in os.listdir(src):
+            src_path = os.path.join(src, filename)
+            dst_path = os.path.join(dest, filename)
+            try:
+                shutil.move(src_path, dst_path)
+            except Exception:
+                # ignore any errors (e.g. if file disappears)
+                pass
     
     def openJsonFile(filePath: str) -> str:
         try:
