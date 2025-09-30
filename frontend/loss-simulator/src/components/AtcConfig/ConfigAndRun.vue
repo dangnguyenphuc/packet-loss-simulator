@@ -183,7 +183,7 @@ export default {
           networkData = JSON.stringify(json);
         } catch {}
         // console.log(`Test ${i}\nComplex: ${curComplex}\nPLC Flag: ${curUsePlcFlag}\nNetType: ${networkType}\njson: ${networkData}`)
-        this.configs.push(this.createTestWithParams(curComplex, curUsePlcFlag, networkType, networkData));
+        this.configs.push(this.createTestWithParams(i, curComplex, curUsePlcFlag, networkType, networkData));
       }
 
       // this.configs = Array.from({ length: NUMBER_OF_SAMPLE_CONFIGS }, (_, i) => this.createTest(i));
@@ -210,13 +210,13 @@ export default {
       };
     },
 
-    createTestWithParams(complexity, usePlc, networkType, jsonString) {
+    createTestWithParams(index, complexity, usePlc, networkType, jsonString) {
       return {
-        id: Date.now() + `${complexity}_${usePlc}`,
+        id: Date.now() + `${complexity}_${usePlc}_${index}`,
         status: TEST_STATUS.PENDING,
         atcConfigs: [
           {
-            id: Date.now() + "_" + `${complexity}_${usePlc}_0`,
+            id: Date.now() + "_" + `${complexity}_${usePlc}_${index}`,
             select: networkType,
             jsonData: jsonString,
             timer: { h: 0, m: 0, s: DEFAULT_ATC_TIMEOUT/1000 },
