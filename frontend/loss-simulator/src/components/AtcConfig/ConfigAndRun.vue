@@ -171,11 +171,11 @@ export default {
 
       for (let i = 0; i < NUMBER_OF_SAMPLE_CONFIGS; i += 1) {
         const curComplex = EVAL_COMPLEX[Math.trunc(i / eachComplexTests)];
-        const curUsePlcFlag = !(Math.trunc(i/EVAL_LOSS_PERCENTAGE.length) % EVAL_NORMAL_AND_PLC.length);
-        const curNetworkType = EVAL_NETWORK_TYPE[(Math.trunc(i/EVAL_LOSS_PERCENTAGE.length) % EVAL_NETWORK_TYPE.length)];
+        const curNetworkType = EVAL_NETWORK_TYPE[(Math.trunc(i/(eachComplexTests/EVAL_NORMAL_AND_PLC.length)) % EVAL_NETWORK_TYPE.length)];
         const networkType = curNetworkType.name;
         let networkData = curNetworkType.data;
-        const curLoss = EVAL_LOSS_PERCENTAGE[i%EVAL_LOSS_PERCENTAGE.length];
+        const curLoss = EVAL_LOSS_PERCENTAGE[Math.trunc(i/EVAL_NORMAL_AND_PLC.length)%EVAL_LOSS_PERCENTAGE.length];
+        const curUsePlcFlag = EVAL_NORMAL_AND_PLC[(i % EVAL_NORMAL_AND_PLC.length)] === 'normal';
 
         try {
           let json = JSON.parse(networkData);
@@ -399,17 +399,23 @@ export default {
           }
 
           const numberOfAudioFiles = runAppRes.result.audioFiles.length;
+          let flag = false;
+          let err;
           for (const audio of runAppRes.result.audioFiles) {
             const duration = await this.getWavDuration(audio)
-            if (duration < totalDelay / 1000 - 1 && numberOfAudioFiles <= 3) {
-              const err = new Error(`Android App: Invalid audio file: ${audio}`);
+            if (duration < totalDelay / 1000 - 1) {
+              err = new Error(`Android App: Invalid audio file: ${audio}`);
               err.storeFolder = runAppRes.result.zrtcLog[0]
                                 .split("/")
                                 .slice(-2, -1)
                                 .join("/");
-              throw err;
+              
+            } else {
+              flag = true
             }
           }
+
+          if (!flag) throw err;
 
           // Success
           test.result = {

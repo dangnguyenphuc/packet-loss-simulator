@@ -12,9 +12,19 @@ export const GUIDE_TEXT = `Requirements:
 export const TOAST_TIMEOUT = 3000;
 export const DEFAULT_ATC_TIMEOUT = 20000;
 export const MAX_RETRIES = 5;
-export const RETRY_DELAY = 2000;
+export const RETRY_DELAY = 3000;
 
-export const EVAL_COMPLEX = [5,6,7,8,9,10];
+export const EVAL_COMPLEX = [
+	// 2,
+	// 3,
+	// 4,
+	// 5,
+	// 6,
+	7,
+	// 8,
+	// 9,
+	// 10
+];
 export const EVAL_NETWORK_TYPE = [
 	// 3g-good
 	{
@@ -28,8 +38,16 @@ export const EVAL_NETWORK_TYPE = [
 	}
 
 ]
-export const EVAL_LOSS_PERCENTAGE = [21,18,15,12,9,6,3,0]
-export const EVAL_NORMAL_AND_PLC = ['normal', 'plc']
+export const EVAL_LOSS_PERCENTAGE = [
+	21,18,
+	15,12,9,
+	6,
+	3,0
+]
+export const EVAL_NORMAL_AND_PLC = [
+	'normal', 
+	'plc',
+]
 export const NUMBER_OF_SAMPLE_CONFIGS = EVAL_COMPLEX.length * EVAL_NETWORK_TYPE.length * EVAL_LOSS_PERCENTAGE.length * EVAL_NORMAL_AND_PLC.length;
 
 /*

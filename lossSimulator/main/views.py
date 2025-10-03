@@ -108,6 +108,8 @@ def runTaskHandler(request, taskId):
 def checkTask(taskId):
     result = cache.get(taskId)
     if result:
+        # cache.delete(taskId)
+        runningTasks.pop(taskId, None)
         return JsonResponse({"status": "done", "result": result})
     return JsonResponse({"status": "failed"}) 
 
@@ -115,6 +117,7 @@ def checkTask(taskId):
 def stopZrtcAndroidApp(taskId):
     with tasksLock:
         task = runningTasks.get(taskId)
+        runningTasks.clear()
 
     if not task:
         return JsonResponse({"error": "Task not found or already finished"}, status=404)
@@ -126,6 +129,8 @@ def stopZrtcAndroidApp(taskId):
 
 
 def runApp(taskId, deviceId, enableOpusPlc, timeout, startEvent, stopEvent, complexity=None, folderName=None):
+    with tasksLock:
+        runningTasks.clear()
     controller = AndroidAppController(deviceId=deviceId)
     controller.stopAll()
     try:
@@ -155,7 +160,7 @@ def runApp(taskId, deviceId, enableOpusPlc, timeout, startEvent, stopEvent, comp
             deviceId
         )
 
-        FileUtils.moveFiles(specificFolder + "/" + controller.timestamp, specificFolder)
+        FileUtils.moveFiles(specificFolder + "/" + "_".join(specificFolder.split("_")[-2:]), specificFolder)
 
         audioFiles = FileUtils.getAudioFiles(specificFolder)
         logFiles = FileUtils.getLogFiles(specificFolder)
@@ -165,17 +170,14 @@ def runApp(taskId, deviceId, enableOpusPlc, timeout, startEvent, stopEvent, comp
             "audioFiles": audioFiles,
             "zrtcLog": logFiles,
         }
-        cache.set(taskId, result, timeout=5)
+        cache.set(taskId, result, timeout=71)
 
     except Exception as e:
         print(f"[runApp] Exception: {e}")
         startEvent.set()
         controller.stopAll()
-
-    finally:
         with tasksLock:
             runningTasks.pop(taskId, None)
-        print(f"[runApp] Task {taskId} removed from runningTasks")
 
 @csrf_exempt
 def fileHanldler(request, folderName):
