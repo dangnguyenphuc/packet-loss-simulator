@@ -118,3 +118,11 @@ export async function removeFolder(folderName, endpoint = STORE_FOLDER_ENDPOINT)
         throw new Error(`[DELETE] ${endpoint} failed: ${err.message}`);
     }
 }
+
+export async function isValidAudioFolder(folderName, endpoint = STORE_FOLDER_ENDPOINT) {
+    try {
+        return await axiosGet(`${endpoint}/${folderName}`);
+    } catch (err) {
+        throw new Error(`[DELETE] ${endpoint} failed: ${err.message}`);
+    }
+}

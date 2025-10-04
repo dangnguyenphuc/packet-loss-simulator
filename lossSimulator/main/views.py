@@ -5,7 +5,7 @@ from django.http import HttpResponseNotFound
 from utils.utils import NetworkUtils, FileUtils, AdbUtils, AudioUtils
 from utils.android import AndroidAppController
 import json
-from utils.constants import DEFAULT_EVAL_TIMEOUT, DESKTOP_STATIC_FOLDER
+from utils.constants import DEFAULT_EVAL_TIMEOUT, DESKTOP_STATIC_FOLDER, DEFAULT_AUDIO_DURATION, DEFAULT_AUDIO_DURATION_OFFSET
 from django.conf import settings
 import threading, uuid
 from django.core.cache import cache
@@ -60,6 +60,8 @@ def getInfo(request):
 
 @csrf_exempt
 def runZrtcAndroidApp(request):
+    with tasksLock:
+        runningTasks.clear()
     try :
         requestData = json.loads(request.body.decode("utf-8"))
         if ("deviceId" not in requestData or requestData["deviceId"] == ""):
@@ -109,8 +111,21 @@ def checkTask(taskId):
     result = cache.get(taskId)
     if result:
         # cache.delete(taskId)
-        runningTasks.pop(taskId, None)
-        return JsonResponse({"status": "done", "result": result})
+        flag = False
+        for audio in result["audioFiles"]:
+            try: 
+                if AudioUtils.isValidAudioFile(audio):
+                    print(f"{audio} is valid")
+                    flag = True
+                    break
+                else :
+                    print(f"Passed Audio {audio} with {AudioUtils.getAudioDuration(audio)}")
+            except:
+                print(f"Cannot open {audio}")
+        
+        if flag:
+            result["audioFiles"] = [file.split("public")[-1] for file in result["audioFiles"]]
+            return JsonResponse({"status": "done", "result": result})
     return JsonResponse({"status": "failed"}) 
 
 @csrf_exempt
@@ -129,8 +144,6 @@ def stopZrtcAndroidApp(taskId):
 
 
 def runApp(taskId, deviceId, enableOpusPlc, timeout, startEvent, stopEvent, complexity=None, folderName=None):
-    with tasksLock:
-        runningTasks.clear()
     controller = AndroidAppController(deviceId=deviceId)
     controller.stopAll()
     try:
@@ -160,19 +173,20 @@ def runApp(taskId, deviceId, enableOpusPlc, timeout, startEvent, stopEvent, comp
             deviceId
         )
 
-        FileUtils.moveFiles(specificFolder + "/" + "_".join(specificFolder.split("_")[-2:]), specificFolder)
+        try: 
+            FileUtils.moveFiles(specificFolder + "/" + "_".join(specificFolder.split("_")[-2:]), specificFolder)
+        finally:
+            audioFiles = FileUtils.getAudioFiles(specificFolder)
+            logFiles = FileUtils.getLogFiles(specificFolder)
 
-        audioFiles = FileUtils.getAudioFiles(specificFolder)
-        logFiles = FileUtils.getLogFiles(specificFolder)
-        audioFiles = [file.split("public")[-1] for file in audioFiles]
-
-        result = {
-            "audioFiles": audioFiles,
-            "zrtcLog": logFiles,
-        }
-        cache.set(taskId, result, timeout=71)
-
+            result = {
+                "audioFiles": audioFiles,
+                "zrtcLog": logFiles,
+            }
+            cache.set(taskId, result, timeout=71)
+            print("Set task id ", taskId)
     except Exception as e:
+        cache.set(taskId, None, timeout=71)
         print(f"[runApp] Exception: {e}")
         startEvent.set()
         controller.stopAll()
@@ -184,6 +198,6 @@ def fileHanldler(request, folderName):
     if request.method == "DELETE":
         # remove storing folder 
         FileUtils.removeStoringFolder(folderName)
-        return JsonResponse()
+        return JsonResponse({"data": "done"})
     else:
         return HttpResponseNotFound("Not found")

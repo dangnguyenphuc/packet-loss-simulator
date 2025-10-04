@@ -11,6 +11,10 @@ from datetime import datetime, timezone, timedelta
 import wave
 from django.conf import settings 
 import time
+from .plc_mos import PLCMOSEstimator
+import soundfile as sf
+
+plcmos = PLCMOSEstimator()
 
 class DateTimeUtils:
     @staticmethod
@@ -18,10 +22,20 @@ class DateTimeUtils:
         tz = timezone(timedelta(hours=7))
         return datetime.now(tz).strftime("%d-%m-%Y_%H%M%S")
 class AudioUtils:
+    @staticmethod
+    def isValidAudioFile(filePath: str) -> bool:
+        try:
+            data, sr = sf.read(filePath)
+            plcmos.run(data, sr)
+            return AudioUtils.getAudioDuration(filePath) >= DEFAULT_AUDIO_DURATION - DEFAULT_AUDIO_DURATION_OFFSET
+        except:
+            return False
+
+    @staticmethod
     def getAudioDuration(filePath: str) -> float:
-        with wave.open(filePath, "rb") as wavFile:
-            frames = wavFile.getnframes()
-            rate = wavFile.getframerate()
+        with sf.SoundFile(filePath) as f:
+            frames = len(f)
+            rate = f.samplerate
             duration = frames / float(rate)
         return round(duration, 2)
 

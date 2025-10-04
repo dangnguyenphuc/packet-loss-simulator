@@ -15,15 +15,15 @@ export const MAX_RETRIES = 5;
 export const RETRY_DELAY = 3000;
 
 export const EVAL_COMPLEX = [
-	// 2,
-	// 3,
-	// 4,
-	// 5,
-	// 6,
+	2,
+	3,
+	4,
+	5,
+	6,
 	7,
-	// 8,
-	// 9,
-	// 10
+	8,
+	9,
+	10
 ];
 export const EVAL_NETWORK_TYPE = [
 	// 3g-good
@@ -39,7 +39,7 @@ export const EVAL_NETWORK_TYPE = [
 
 ]
 export const EVAL_LOSS_PERCENTAGE = [
-	21,18,
+	40,37,35,33,30,27,25,23,21,18,
 	15,12,9,
 	6,
 	3,0

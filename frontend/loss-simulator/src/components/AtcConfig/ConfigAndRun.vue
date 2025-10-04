@@ -124,6 +124,7 @@ import {
 import AtcConfig from "./AtcConfig.vue";
 import Result from "./Result.vue";
 import { applyConfig, deleteShape, runApp, getAppRes, stopApp, removeFolder } from "../../utils/specific";
+import { DEFAULT_REQUEST_TIMEOUT } from "../../constants/api";
 
 export default {
   name: "ConfigAndRun",
@@ -252,7 +253,7 @@ export default {
       for (let i = 0; i < this.configs.length; i++) {
         while (true && !this.configs[i].cancelled) {
           await this.startAndroidApp(i);
-          await new Promise((resolve) => setTimeout(resolve, 2000));
+          await new Promise((resolve) => setTimeout(resolve, DEFAULT_REQUEST_TIMEOUT));
 
           if (this.configs[i].status === TEST_STATUS.PASS) {
             break;
@@ -361,18 +362,34 @@ export default {
           
           await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY));
           
+          let err = undefined;
           for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
             if (this.configs[index].cancelled) return;
             runAppRes = await getAppRes(startAppRes.taskId);
-
             if (
               runAppRes &&
               runAppRes.status === "done" &&
               runAppRes.result.audioFiles?.length > 0 &&
               runAppRes.result.zrtcLog?.length > 0
             ) {
-              // Success, break the retry loop
-              break;
+              // Success
+              test.result = {
+                status: RES_STATUS.SUCCESS,
+                audioFiles: runAppRes.result.audioFiles,
+                logFile: runAppRes.result.zrtcLog[0],
+              };
+              test.status = TEST_STATUS.PASS;
+              this.configs[index].taskId = "";
+              return;
+            } else if (runAppRes &&
+              runAppRes.status === "done" &&
+              runAppRes.result.zrtcLog.length <= 0) {
+                err = new Error("Error pull audio files")
+                err.storeFolder = runAppRes.result.zrtcLog[0]
+                                  .split("/")
+                                  .slice(-2, -1)
+                                  .join("/");
+                break;
             }
 
             if (attempt < MAX_RETRIES) {
@@ -381,55 +398,18 @@ export default {
             }
           }
 
-          // After retries, validate result
-          if (
-            !runAppRes ||
-            runAppRes.status !== "done" ||
-            !runAppRes.result.audioFiles?.length ||
-            !runAppRes.result.zrtcLog?.length
-          ) {
-            const err = new Error("Android App: run fail or missing audio/log files");
-            if (runAppRes.result.zrtcLog?.length > 0) {
-              err.storeFolder = runAppRes.result.zrtcLog[0]
-                                .split("/")
-                                .slice(-2, -1)
-                                .join("/");
-              throw err;
-            }
+          if (err != undefined) {
+            throw err
           }
 
-          const numberOfAudioFiles = runAppRes.result.audioFiles.length;
-          let flag = false;
-          let err;
-          for (const audio of runAppRes.result.audioFiles) {
-            const duration = await this.getWavDuration(audio)
-            if (duration < totalDelay / 1000 - 1) {
-              err = new Error(`Android App: Invalid audio file: ${audio}`);
-              err.storeFolder = runAppRes.result.zrtcLog[0]
-                                .split("/")
-                                .slice(-2, -1)
-                                .join("/");
-              
-            } else {
-              flag = true
-            }
-          }
+          throw new Error("Max retries reached !")
 
-          if (!flag) throw err;
-
-          // Success
-          test.result = {
-            status: RES_STATUS.SUCCESS,
-            audioFiles: runAppRes.result.audioFiles,
-            logFile: runAppRes.result.zrtcLog[0],
-          };
-          test.status = TEST_STATUS.PASS;
-          this.configs[index].taskId = "";
+          
         } catch (err) {
-          try {
-            if (err.storeFolder)
-              removeFolder(err.storeFolder);
-          } catch {}
+          if (err.storeFolder) {
+            removeFolder(err.storeFolder);
+          }
+          this.configs[index].taskId = "";
           // this.stopAndroidApp(index);
           if (this.configs[index].cancelled) return;
           test.result = {

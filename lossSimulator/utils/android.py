@@ -126,5 +126,6 @@ class AndroidAppController:
 
     def startEval(self, startEvent, activity=[LOGIN_ACTIVITY, MAIN_ACTIVITY]):
         self.startActivity(activity[0])
-        if self.waitForActivity(activity[1]):
-            startEvent.set()
+        self.waitForActivity(activity[1])
+        startEvent.set()
+
