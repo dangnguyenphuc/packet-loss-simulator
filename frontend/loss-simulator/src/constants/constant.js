@@ -10,9 +10,53 @@ export const GUIDE_TEXT = `Requirements:
 	+ Each run can used multiple ATC config(s)`;
 
 export const TOAST_TIMEOUT = 3000;
-export const DEFAULT_ATC_TIMEOUT = 10000;
+export const DEFAULT_ATC_TIMEOUT = 20000;
 export const MAX_RETRIES = 5;
-export const RETRY_DELAY = 2000;
+export const RETRY_DELAY = 3000;
+
+export const EVAL_COMPLEX = [
+	// 2,
+	// 3,
+	// 4,
+	// 5,
+	// 6,
+	7,
+	8,
+	9,
+	10
+];
+export const EVAL_NETWORK_TYPE = [
+	// 3g-good
+	{
+		name: "3g-good",
+		data: "{\"down\":{\"corruption\":{\"correlation\":0,\"percentage\":0},\"delay\":{\"correlation\":0,\"delay\":\"90\",\"jitter\":0},\"iptables_options\":[],\"loss\":{\"correlation\":0,\"percentage\":0},\"rate\":\"850\",\"reorder\":{\"correlation\":0,\"gap\":0,\"percentage\":0}},\"up\":{\"corruption\":{\"correlation\":0,\"percentage\":0},\"delay\":{\"correlation\":0,\"delay\":\"100\",\"jitter\":0},\"iptables_options\":[],\"loss\":{\"correlation\":0,\"percentage\":0},\"rate\":\"420\",\"reorder\":{\"correlation\":0,\"gap\":0,\"percentage\":0}}}", 
+	},
+	// 4g-good	
+	{
+		name: "4g-good",
+		data: "{\"down\":{\"corruption\":{\"correlation\":0,\"percentage\":0},\"delay\":{\"correlation\":0,\"delay\":\"20\",\"jitter\":2},\"iptables_options\":[],\"loss\":{\"correlation\":0,\"percentage\":0},\"rate\":\"30000\",\"reorder\":{\"correlation\":0,\"gap\":0,\"percentage\":0}},\"up\":{\"corruption\":{\"correlation\":0,\"percentage\":0},\"delay\":{\"correlation\":0,\"delay\":\"25\",\"jitter\":2},\"iptables_options\":[],\"loss\":{\"correlation\":0,\"percentage\":0},\"rate\":\"10000\",\"reorder\":{\"correlation\":0,\"gap\":0,\"percentage\":0}}}",
+	}
+
+]
+export const EVAL_LOSS_PERCENTAGE = [
+	// 40,37,35,33,30,27,25,23,21,18,
+	// 15,
+	12,9,
+	6,
+	3,0
+]
+export const EVAL_NORMAL_AND_PLC = [
+	'normal', 
+	'plc',
+]
+export const EVAL_NORMAL_AND_DRED = [
+	'normal', 
+	// cmt dred if dont want to gen dred test cases
+	'dred',
+]
+
+export const NUMBER_OF_SAMPLE_CONFIGS = EVAL_COMPLEX.length * EVAL_NETWORK_TYPE.length * EVAL_LOSS_PERCENTAGE.length * EVAL_NORMAL_AND_PLC.length * EVAL_NORMAL_AND_DRED.length;
+
 /*
 \\\\\\\\\\\\\\\\\\\\\\\\
 Emit events: -----------

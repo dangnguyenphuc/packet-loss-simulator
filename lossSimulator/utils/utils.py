@@ -7,20 +7,35 @@ import requests
 from .constants import *
 import shutil
 import subprocess
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 import wave
 from django.conf import settings 
 import time
+from .plc_mos import PLCMOSEstimator
+import soundfile as sf
+
+plcmos = PLCMOSEstimator()
 
 class DateTimeUtils:
     @staticmethod
     def getTimestamped():
-        return datetime.now().strftime("%d-%m-%Y_%H%M%S")
+        tz = timezone(timedelta(hours=7))
+        return datetime.now(tz).strftime("%d-%m-%Y_%H%M%S")
 class AudioUtils:
+    @staticmethod
+    def isValidAudioFile(filePath: str) -> bool:
+        try:
+            data, sr = sf.read(filePath)
+            plcmos.run(data, sr)
+            return AudioUtils.getAudioDuration(filePath) >= DEFAULT_AUDIO_DURATION - DEFAULT_AUDIO_DURATION_OFFSET
+        except:
+            return False
+
+    @staticmethod
     def getAudioDuration(filePath: str) -> float:
-        with wave.open(filePath, "rb") as wavFile:
-            frames = wavFile.getnframes()
-            rate = wavFile.getframerate()
+        with sf.SoundFile(filePath) as f:
+            frames = len(f)
+            rate = f.samplerate
             duration = frames / float(rate)
         return round(duration, 2)
 
@@ -53,6 +68,22 @@ class NetworkUtils:
     #     return [host for host in nm.all_hosts() if nm[host].state() == "up"]
 
 class FileUtils:
+
+    @staticmethod
+    def removeStoringFolder(folder):
+        folder = FileUtils.getAbsPath(str(settings.BASE_DIR) + "/" + DESKTOP_STATIC_FOLDER) + "/" + folder
+        shutil.rmtree(folder, ignore_errors=True)
+
+    @staticmethod
+    def moveFiles(src, dest):
+        for filename in os.listdir(src):
+            src_path = os.path.join(src, filename)
+            dst_path = os.path.join(dest, filename)
+            try:
+                shutil.move(src_path, dst_path)
+            except Exception:
+                # ignore any errors (e.g. if file disappears)
+                pass
     
     def openJsonFile(filePath: str) -> str:
         try:
@@ -358,6 +389,16 @@ class AdbUtils:
 
         result = subprocess.run(cmd, capture_output=True, text=True)
         return result.stdout.strip() == "1"
+    
+    @staticmethod
+    def removeFolder(path, deviceId=None):
+        cmd = ["adb"]
+        if deviceId:
+            cmd += ["-s", deviceId]
+            
+        cmd += ["shell", f"rm -rf {path}"]
+
+        subprocess.run(cmd, capture_output=True, text=True)
 
     @staticmethod
     def getDownloadsPath(deviceId = None):

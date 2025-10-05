@@ -14,9 +14,11 @@ LOG_TYPE = ".log"
 # =====================================================================
 # ========================== ANDROID Constants ========================
 # =====================================================================
-DEFAULT_TIMEOUT = 5
+DEFAULT_TIMEOUT = 20
 DEFAULT_RETRY = 3
 DEFAULT_EVAL_TIMEOUT = 30
+DEFAULT_AUDIO_DURATION = 20
+DEFAULT_AUDIO_DURATION_OFFSET = 2
 
 class CALL_OPTION(Enum):
     LOOPBACK_SERVER = 0

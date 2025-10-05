@@ -2,13 +2,19 @@
   <v-container class="d-flex flex-column ga-3">
     <!-- Input -->
     <v-row>
-      <v-col cols="12" md="4">
+      <v-col class="d-flex justify-center align-center">
         <v-text-field
           v-model="numTests"
           type="text"
-          label="Number of Tests (0 - 10)"
-          @input="validateNumTests"
+          label="Number of Tests"
+          hide-details
         />
+
+      </v-col>
+      <v-col class="d-flex justify-center align-center">
+        <v-btn prepend-icon="$vuetify" @click="validateNumTests">
+          Generate Test
+        </v-btn>
       </v-col>
     </v-row>
 
@@ -53,11 +59,35 @@
 
           <!-- Panel Content -->
           <v-expansion-panel-text>
-            <v-checkbox
-                  v-model="test.enableOpusPlc"
-                  label="Enable Opus PLC"
-                  class="d-flex align-center justify-start"
-            />
+            
+            <div class="d-flex justify-center align-center">
+              <v-col>
+                <v-checkbox
+                    v-model="test.enableOpusPlc"
+                    label="Enable Opus PLC"
+                    class="d-flex align-center justify-start"
+                />
+              </v-col>
+              <v-col>
+                <v-checkbox
+                    v-model="test.enableOpusDred"
+                    label="Enable Opus Dred"
+                    class="d-flex align-center justify-start"
+                />
+              </v-col>
+              <v-col class="d-flex justify-center align-center ga-3">
+                <span>
+                  Complexity
+                </span>
+                <v-select 
+                v-model="test.complexity"
+                style="max-width: 100px"
+                density="compact"
+                :items="complexityOptions" 
+                hide-details
+              />
+              </v-col>
+            </div>
             <AtcConfig 
               @open:Toast="openToast"
               @stop:AndroidApp="() => stopAndroidApp(index)"
@@ -86,10 +116,23 @@
 
 <script>
 import { TEST_STATUS, RES_STATUS } from "../../constants/enums";
-import { DEFAULT_ATC_TIMEOUT, EVENT_OPEN_TOAST, TOAST_TIMEOUT, MAX_RETRIES, RETRY_DELAY } from "../../constants/constant"
+import { 
+  DEFAULT_ATC_TIMEOUT, 
+  EVENT_OPEN_TOAST, 
+  TOAST_TIMEOUT, 
+  MAX_RETRIES, 
+  RETRY_DELAY,
+  NUMBER_OF_SAMPLE_CONFIGS,
+  EVAL_COMPLEX,
+  EVAL_LOSS_PERCENTAGE,
+  EVAL_NORMAL_AND_PLC,
+  EVAL_NETWORK_TYPE,
+  EVAL_NORMAL_AND_DRED,
+} from "../../constants/constant"
 import AtcConfig from "./AtcConfig.vue";
 import Result from "./Result.vue";
-import { applyConfig, deleteShape, runApp, getAppRes, stopApp } from "../../utils/specific";
+import { applyConfig, deleteShape, runApp, getAppRes, stopApp, removeFolder } from "../../utils/specific";
+import { DEFAULT_REQUEST_TIMEOUT } from "../../constants/api";
 
 export default {
   name: "ConfigAndRun",
@@ -106,22 +149,55 @@ export default {
       expanded: [],
       TEST_STATUS,
       RES_STATUS,
+      complexityOptions: Array.from({ length: 10 }, (_, i) => i + 1),
     };
   },
   methods: {
     validateNumTests() {
-      let value = parseInt(this.numTests, 10);
-      if (isNaN(value)) value = 0;
-      if (value < 0) value = 0;
-      if (value > 10) value = 10;
-      this.numTests = value.toString();
-      this.generateConfigs();
+      if (this.numTests === "test") {
+        this.generateSampleConfigs();
+      } else {
+        try {
+          let value = parseInt(this.numTests, 10);
+          if (value < 0) value = 0;
+          // // if (value > 12) value = 12;
+          this.numTests = value.toString();
+          this.generateConfigs();
+        } catch {
+
+        }
+      }
     },
 
     generateConfigs() {
-      const count = parseInt(this.numTests, 10) || 0;
-      this.configs = Array.from({ length: count }, (_, i) => this.createTest(i));
+      this.configs = Array.from({ length: this.numTests }, (_, i) => this.createTest(i));
       this.expanded = this.configs.map((_, i) => i);
+    },
+
+    generateSampleConfigs() {
+      this.configs = [];
+      const eachComplexTests = EVAL_NETWORK_TYPE.length * EVAL_LOSS_PERCENTAGE.length * EVAL_NORMAL_AND_PLC.length * EVAL_NORMAL_AND_DRED.length;
+
+      for (let i = 0; i < NUMBER_OF_SAMPLE_CONFIGS; i += 1) {
+        const curComplex = EVAL_COMPLEX[Math.trunc(i / eachComplexTests)];
+        const curNetworkType = EVAL_NETWORK_TYPE[(Math.trunc(i/eachComplexTests * EVAL_NORMAL_AND_DRED.length) % EVAL_NETWORK_TYPE.length)];
+        const networkType = curNetworkType.name;
+        let networkData = curNetworkType.data;
+        const curLoss = EVAL_LOSS_PERCENTAGE[Math.trunc(i/(EVAL_NORMAL_AND_PLC.length * EVAL_NORMAL_AND_DRED.length))%EVAL_LOSS_PERCENTAGE.length];
+        const curUsePlcFlag = EVAL_NORMAL_AND_PLC[Math.trunc(i/EVAL_NORMAL_AND_DRED.length) % EVAL_NORMAL_AND_PLC.length] === 'normal';
+        const curUseDredFlag = EVAL_NORMAL_AND_DRED[i % EVAL_NORMAL_AND_DRED.length] === 'dred'
+
+        try {
+          let json = JSON.parse(networkData);
+          json.down.loss.percentage = curLoss;
+          networkData = JSON.stringify(json);
+        } catch {}
+        // console.log(`Test ${i}\nComplex: ${curComplex}\nPLC Flag: ${curUsePlcFlag}\nNetType: ${networkType}\njson: ${networkData}`)
+        this.configs.push(this.createTestWithParams(i, curComplex, curUsePlcFlag, curUseDredFlag, networkType, networkData));
+      }
+
+      // this.configs = Array.from({ length: NUMBER_OF_SAMPLE_CONFIGS }, (_, i) => this.createTest(i));
+      // this.expanded = this.configs.map((_, i) => i);
     },
 
     createTest(i = 0) {
@@ -136,27 +212,66 @@ export default {
             timer: { h: 0, m: 0, s: DEFAULT_ATC_TIMEOUT/1000 },
           }
         ],
+        complexity: 5,
         taskId: "",
         cancelled: false,
-        enableOpusPlc: false,
+        enableOpusPlc: true,
+        enableOpusDred: true,
+        result: null,
+      };
+    },
+
+    createTestWithParams(index, complexity, usePlc, useDred, networkType, jsonString) {
+      return {
+        id: Date.now() + `${complexity}_${usePlc}_${index}`,
+        status: TEST_STATUS.PENDING,
+        atcConfigs: [
+          {
+            id: Date.now() + "_" + `${complexity}_${usePlc}_${index}`,
+            select: networkType,
+            jsonData: jsonString,
+            timer: { h: 0, m: 0, s: DEFAULT_ATC_TIMEOUT/1000 },
+          }
+        ],
+        complexity: complexity,
+        taskId: "",
+        cancelled: false,
+        enableOpusPlc: usePlc,
+        enableOpusDred: useDred,
         result: null,
       };
     },
 
     addTest() {
-      if (this.configs.length >= 10) {
-        this.openToast("Limit Reached", "You can only add up to 10 tests");
-        return;
-      }
+      // if (this.configs.length >= 12) {
+      //   this.openToast("Limit Reached", "You can only add up to 12 tests");
+      //   return;
+      // }
       const newTest = this.createTest(this.configs.length);
       this.configs.push(newTest);
-      this.numTests = (parseInt(this.numTests, 10) + 1).toString();
+      this.numTests = (parseInt(this.numTests,10) + 1).toString();
       this.expanded.push(this.configs.length - 1);
     },
 
     async runTests() {
       for (let i = 0; i < this.configs.length; i++) {
-        await this.startAndroidApp(i);
+        this.configs[i].taskId = "";
+        this.configs[i].result = null;
+        this.configs[i].cancelled = false;
+        this.configs[i].status = TEST_STATUS.PENDING;
+      }
+      
+      for (let i = 0; i < this.configs.length; i++) {
+        while (true && !this.configs[i].cancelled) {
+          await this.startAndroidApp(i);
+          await new Promise((resolve) => setTimeout(resolve, DEFAULT_REQUEST_TIMEOUT));
+
+          if (this.configs[i].status === TEST_STATUS.PASS) {
+            break;
+          } else {
+            console.log(`Retrying test ${i}...`);
+          }
+        }
       }
     },
     
@@ -169,10 +284,14 @@ export default {
       
       this.configs.splice(index, 1);
       this.expanded = this.configs.map((_, i) => i);
-      this.numTests = (parseInt(this.numTests, 10) - 1).toString();
+      this.numTests = (parseInt(this.numTests,10) - 1).toString();
     },
 
     async stopAndroidApp(index) {
+      try {
+        // delete current shape
+        await deleteShape({ ip: this.deviceIp });
+      } catch {}
       try {
         if (this.configs[index].taskId && this.configs[index].taskId.length > 0)
           await stopApp(this.configs[index].taskId);
@@ -188,7 +307,20 @@ export default {
       this.configs[index].result = null;
       const test = this.configs[index];
         let totalDelay = 0;
-        const timers = test.atcConfigs.map(({ timer }) => {
+        let atcConfigName = "";
+        const timers = test.atcConfigs.map(({ select, timer, jsonData }) => {
+          
+          let selectString = select.split(".").at(0);
+
+          if (atcConfigName.length == 0) atcConfigName = selectString;
+          else atcConfigName += "-" + selectString;
+
+          try {
+            let data = JSON.parse(jsonData);
+            atcConfigName += `loss${data.down.loss.percentage}`;
+          } catch {
+            atcConfigName += "loss0";
+          }
           const { h, m, s } = timer;
           let delay = (h * 3600 + m * 60 + s) * 1000;
           if (delay <= 0) {
@@ -203,14 +335,19 @@ export default {
           const startAppRes = await runApp({
             deviceId: this.deviceId,
             time: totalDelay / 1000,
-            enableOpusPlc: test.enableOpusPlc
+            enableOpusPlc: test.enableOpusPlc,
+            enableOpusDred: test.enableOpusDred,
+            folderName: atcConfigName,
+            complexity: test.complexity
           });
 
-          console.log("start app with payload:", {
-            deviceId: this.deviceId,
-            time: totalDelay / 1000,
-            enableOpusPlc: test.enableOpusPlc
-          });
+          // console.log("run app with params:", {
+          //   deviceId: this.deviceId,
+          //   time: totalDelay / 1000,
+          //   enableOpusPlc: test.enableOpusPlc,
+          //   folderName: atcConfigName,
+          //   complexity: test.complexity
+          // })
           
           if (!startAppRes || startAppRes.status !== "started") {
             throw new Error("Android App: Cannot start App");
@@ -234,19 +371,37 @@ export default {
             await deleteShape({ ip: this.deviceIp });
           } catch {}
           let runAppRes = null;
-
+          
+          await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY));
+          
+          let err = undefined;
           for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
             if (this.configs[index].cancelled) return;
             runAppRes = await getAppRes(startAppRes.taskId);
-
             if (
               runAppRes &&
               runAppRes.status === "done" &&
               runAppRes.result.audioFiles?.length > 0 &&
               runAppRes.result.zrtcLog?.length > 0
             ) {
-              // Success, break the retry loop
-              break;
+              // Success
+              test.result = {
+                status: RES_STATUS.SUCCESS,
+                audioFiles: runAppRes.result.audioFiles,
+                logFile: runAppRes.result.zrtcLog[0],
+              };
+              test.status = TEST_STATUS.PASS;
+              this.configs[index].taskId = "";
+              return;
+            } else if (runAppRes &&
+              runAppRes.status === "done" &&
+              runAppRes.result.zrtcLog.length <= 0) {
+                err = new Error("Error pull audio files")
+                err.storeFolder = runAppRes.result.zrtcLog[0]
+                                  .split("/")
+                                  .slice(-2, -1)
+                                  .join("/");
+                break;
             }
 
             if (attempt < MAX_RETRIES) {
@@ -255,25 +410,19 @@ export default {
             }
           }
 
-          // After retries, validate result
-          if (
-            !runAppRes ||
-            runAppRes.status !== "done" ||
-            !runAppRes.result.audioFiles?.length ||
-            !runAppRes.result.zrtcLog?.length
-          ) {
-            throw new Error("Android App: run fail or missing audio/log files");
+          if (err != undefined) {
+            throw err
           }
 
-          // Success
-          test.result = {
-            status: RES_STATUS.SUCCESS,
-            audioFiles: runAppRes.result.audioFiles,
-            logFile: runAppRes.result.zrtcLog[0],
-          };
-          test.status = TEST_STATUS.PASS;
-          this.configs[index].taskId = "";
+          throw new Error("Max retries reached !")
+
+          
         } catch (err) {
+          if (err.storeFolder) {
+            removeFolder(err.storeFolder);
+          }
+          this.configs[index].taskId = "";
+          // this.stopAndroidApp(index);
           if (this.configs[index].cancelled) return;
           test.result = {
             status: RES_STATUS.FAILED,
@@ -286,6 +435,29 @@ export default {
     openToast(componentName="", header = "", message = "", timeout = TOAST_TIMEOUT) {
       this.$emit(EVENT_OPEN_TOAST, this.$options.name, header, message, timeout);
     },
+
+    async getWavDuration(url) {
+      // fetch only first 44 bytes (WAV header)
+      const response = await fetch(url, { headers: { Range: "bytes=0-43" } })
+      const header = await response.arrayBuffer()
+      const view = new DataView(header)
+
+      // parse WAV header
+      const numChannels = view.getUint16(22, true)
+      const sampleRate = view.getUint32(24, true)
+      const bitsPerSample = view.getUint16(34, true)
+
+      // now fetch the "data" chunk size
+      // but safest: fetch file size via HEAD request
+      const headResp = await fetch(url, { method: "HEAD" })
+      const fileSize = parseInt(headResp.headers.get("Content-Length"))
+
+      // data size = total file size - 44 (header)
+      const dataSize = fileSize - 44
+
+      return dataSize / (sampleRate * numChannels * (bitsPerSample / 8))
+    }
+
   },
   watch: {
     
