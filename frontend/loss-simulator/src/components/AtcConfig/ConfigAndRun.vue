@@ -68,6 +68,13 @@
                     class="d-flex align-center justify-start"
                 />
               </v-col>
+              <v-col>
+                <v-checkbox
+                    v-model="test.enableOpusDred"
+                    label="Enable Opus Dred"
+                    class="d-flex align-center justify-start"
+                />
+              </v-col>
               <v-col class="d-flex justify-center align-center ga-3">
                 <span>
                   Complexity
@@ -120,6 +127,7 @@ import {
   EVAL_LOSS_PERCENTAGE,
   EVAL_NORMAL_AND_PLC,
   EVAL_NETWORK_TYPE,
+  EVAL_NORMAL_AND_DRED,
 } from "../../constants/constant"
 import AtcConfig from "./AtcConfig.vue";
 import Result from "./Result.vue";
@@ -168,15 +176,16 @@ export default {
 
     generateSampleConfigs() {
       this.configs = [];
-      const eachComplexTests = EVAL_NETWORK_TYPE.length * EVAL_LOSS_PERCENTAGE.length * EVAL_NORMAL_AND_PLC.length;
+      const eachComplexTests = EVAL_NETWORK_TYPE.length * EVAL_LOSS_PERCENTAGE.length * EVAL_NORMAL_AND_PLC.length * EVAL_NORMAL_AND_DRED.length;
 
       for (let i = 0; i < NUMBER_OF_SAMPLE_CONFIGS; i += 1) {
         const curComplex = EVAL_COMPLEX[Math.trunc(i / eachComplexTests)];
-        const curNetworkType = EVAL_NETWORK_TYPE[(Math.trunc(i/(eachComplexTests/EVAL_NORMAL_AND_PLC.length)) % EVAL_NETWORK_TYPE.length)];
+        const curNetworkType = EVAL_NETWORK_TYPE[(Math.trunc(i/eachComplexTests * EVAL_NORMAL_AND_DRED.length) % EVAL_NETWORK_TYPE.length)];
         const networkType = curNetworkType.name;
         let networkData = curNetworkType.data;
-        const curLoss = EVAL_LOSS_PERCENTAGE[Math.trunc(i/EVAL_NORMAL_AND_PLC.length)%EVAL_LOSS_PERCENTAGE.length];
-        const curUsePlcFlag = EVAL_NORMAL_AND_PLC[(i % EVAL_NORMAL_AND_PLC.length)] === 'normal';
+        const curLoss = EVAL_LOSS_PERCENTAGE[Math.trunc(i/(EVAL_NORMAL_AND_PLC.length * EVAL_NORMAL_AND_DRED.length))%EVAL_LOSS_PERCENTAGE.length];
+        const curUsePlcFlag = EVAL_NORMAL_AND_PLC[Math.trunc(i/EVAL_NORMAL_AND_DRED.length) % EVAL_NORMAL_AND_PLC.length] === 'normal';
+        const curUseDredFlag = EVAL_NORMAL_AND_DRED[i % EVAL_NORMAL_AND_DRED.length] === 'dred'
 
         try {
           let json = JSON.parse(networkData);
@@ -184,7 +193,7 @@ export default {
           networkData = JSON.stringify(json);
         } catch {}
         // console.log(`Test ${i}\nComplex: ${curComplex}\nPLC Flag: ${curUsePlcFlag}\nNetType: ${networkType}\njson: ${networkData}`)
-        this.configs.push(this.createTestWithParams(i, curComplex, curUsePlcFlag, networkType, networkData));
+        this.configs.push(this.createTestWithParams(i, curComplex, curUsePlcFlag, curUseDredFlag, networkType, networkData));
       }
 
       // this.configs = Array.from({ length: NUMBER_OF_SAMPLE_CONFIGS }, (_, i) => this.createTest(i));
@@ -207,11 +216,12 @@ export default {
         taskId: "",
         cancelled: false,
         enableOpusPlc: true,
+        enableOpusDred: true,
         result: null,
       };
     },
 
-    createTestWithParams(index, complexity, usePlc, networkType, jsonString) {
+    createTestWithParams(index, complexity, usePlc, useDred, networkType, jsonString) {
       return {
         id: Date.now() + `${complexity}_${usePlc}_${index}`,
         status: TEST_STATUS.PENDING,
@@ -227,6 +237,7 @@ export default {
         taskId: "",
         cancelled: false,
         enableOpusPlc: usePlc,
+        enableOpusDred: useDred,
         result: null,
       };
     },
@@ -325,6 +336,7 @@ export default {
             deviceId: this.deviceId,
             time: totalDelay / 1000,
             enableOpusPlc: test.enableOpusPlc,
+            enableOpusDred: test.enableOpusDred,
             folderName: atcConfigName,
             complexity: test.complexity
           });

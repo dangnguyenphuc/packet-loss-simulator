@@ -33,7 +33,8 @@ class AndroidAppController:
         }
         self.intExtras = None
         self.boolExtras = {
-            "ENABLE_OPUS_PLC": False
+            "ENABLE_OPUS_PLC": False,
+            "ENABLE_OPUS_DRED": False
         }
         
 
