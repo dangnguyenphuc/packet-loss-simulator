@@ -6,6 +6,7 @@ import { aliases, mdi } from 'vuetify/iconsets/mdi';
 import * as components from 'vuetify/components';
 import * as directives from 'vuetify/directives';
 import { createRouter, createWebHistory } from 'vue-router';
+import VueApexCharts from 'vue3-apexcharts'
 import routes from './router/index.js';
 import './style.css';
 
@@ -29,4 +30,6 @@ const router = createRouter({
 const app = createApp(App);
 app.use(vuetify);
 app.use(router);
+app.use(VueApexCharts);
+app.component('ApexChart', VueApexCharts)
 app.mount('#app');

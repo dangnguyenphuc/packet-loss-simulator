@@ -12,7 +12,7 @@ export const GUIDE_TEXT = `Requirements:
 export const TOAST_TIMEOUT = 3000;
 export const DEFAULT_ATC_TIMEOUT = 20000;
 export const MAX_RETRIES = 5;
-export const RETRY_DELAY = 3000;
+export const RETRY_DELAY = 4000;
 
 export const EVAL_COMPLEX = [
 	// 2,
@@ -77,3 +77,7 @@ export const EVENT_UPDATE_TIMER_S = "update:second";
 
 export const EVENT_START_APP = "start:AndroidApp";
 export const EVENT_STOP_APP = "stop:AndroidApp";
+
+export const EVENT_START_MONITORING = "start:Monitoring";
+export const EVENT_STOP_MONITORING = "stop:Monitoring";
+export const EVENT_RESET_MONITORING = "reset:Monitoring";

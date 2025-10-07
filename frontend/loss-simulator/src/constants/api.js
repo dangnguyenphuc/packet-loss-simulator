@@ -4,6 +4,7 @@ export const IP_ENDPOINT = '/api/ip';
 export const PROXY_ENDPOINT = '/api/proxy/shape';
 export const ANDROID_RUN_ENDPOINT = '/api/run';
 export const STORE_FOLDER_ENDPOINT = '/api/file';
+export const STAT_ENDPOINT = '/api/stat';
 
 export const MONITORING_INTERVAL = 10000;
 export const DEFAULT_REQUEST_TIMEOUT = 5000;

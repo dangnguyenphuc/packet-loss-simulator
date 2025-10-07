@@ -13,6 +13,7 @@ from django.conf import settings
 import time
 from .plc_mos import PLCMOSEstimator
 import soundfile as sf
+import re
 
 plcmos = PLCMOSEstimator()
 
@@ -499,3 +500,74 @@ class AdbUtils:
         zrtcDemoApp = AdbUtils.getZrtcDemoApp()
         
         return [act for act in targetActivities if AdbUtils.hasActivity(zrtcDemoApp, act, deviceId)]
+    
+    @staticmethod
+    def getCpuUsage(deviceId: str = None, packageName: str = PACKAGE_DOMAIN) -> float:
+        try:
+            cmd = ["adb"]
+            if deviceId:
+                cmd += ["-s", deviceId]
+            cmd += ["shell", "top", "-n", "1", "|", "grep", packageName, "|", "awk", "'{print $9}'"]
+
+            result = subprocess.run(
+                " ".join(cmd),
+                shell=True,
+                capture_output=True,
+                text=True,
+                timeout=5
+            )
+
+            if result.returncode != 0 or not result.stdout.strip():
+                return -1
+
+            # Clean output (e.g., "12%" -> 12.0)
+            cpu_str = result.stdout.strip().replace('%', '')
+            # Sometimes multiple lines may appear — take the first valid number
+            for token in cpu_str.splitlines():
+                try:
+                    return float(token)
+                except ValueError:
+                    continue
+
+            return -1
+
+        except subprocess.TimeoutExpired:
+            return -1
+        except Exception:
+            return -1
+        
+    @staticmethod
+    def getMemUsage(deviceId: str = None, 
+                    packageName: str = APP_PACKAGE
+                    ) -> float:
+        try:
+            cmd = ["adb"]
+            if deviceId:
+                cmd += ["-s", deviceId]
+            cmd += ["shell", "dumpsys", "meminfo", packageName, "||", "grep", "Total"]
+
+            result = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                timeout=5
+            )
+
+            if result.returncode != 0 or not result.stdout.strip():
+                return -1
+
+            output = result.stdout
+
+            # Target line example:
+            # "TOTAL PSS:    90200            TOTAL RSS:   254628       TOTAL SWAP PSS:      398"
+            match = re.search(r"TOTAL\s+PSS:\s+([\d,]+)", output)
+            if match:
+                value = match.group(1).replace(',', '')
+                return int(value)
+
+            return -1
+
+        except subprocess.TimeoutExpired:
+            return -1
+        except Exception:
+            return -1
