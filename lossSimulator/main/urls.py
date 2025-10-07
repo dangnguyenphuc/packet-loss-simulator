@@ -10,4 +10,5 @@ urlpatterns = [
     path("api/run", views.runZrtcAndroidApp, name="runZrtcAndroidApp"),
     path("api/run/<str:taskId>", views.runTaskHandler, name="runTaskHandler"),
     path("api/file/<str:folderName>", views.fileHanldler, name="fileHanldler"),
+    path("api/stat", views.statHandler, name="statHandler"),
 ]

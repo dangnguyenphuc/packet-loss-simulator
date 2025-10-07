@@ -5,7 +5,8 @@ import {
     IP_ENDPOINT,
     JSON_ENDPOINT,
     ANDROID_RUN_ENDPOINT,
-    STORE_FOLDER_ENDPOINT
+    STORE_FOLDER_ENDPOINT,
+    STAT_ENDPOINT,
 } from '../constants/api.js';
 
 export async function fetchDevices() {
@@ -122,6 +123,14 @@ export async function removeFolder(folderName, endpoint = STORE_FOLDER_ENDPOINT)
 export async function isValidAudioFolder(folderName, endpoint = STORE_FOLDER_ENDPOINT) {
     try {
         return await axiosGet(`${endpoint}/${folderName}`);
+    } catch (err) {
+        throw new Error(`[DELETE] ${endpoint} failed: ${err.message}`);
+    }
+}
+
+export async function getStat(payload, endpoint = STAT_ENDPOINT) {
+    try {
+        return await axiosGet(endpoint, payload);
     } catch (err) {
         throw new Error(`[DELETE] ${endpoint} failed: ${err.message}`);
     }

@@ -12,7 +12,7 @@
                 :value="panel.value"
                 :class="panel.class"
             >
-                <div v-if="panel.key < 3 || (selectedDevice && selectedIp)">
+                <div v-if="panel.key < 10 || (selectedDevice && selectedIp)">
                     <v-expansion-panel-title>
                         <span class="title">{{ panel.title }}</span>
                     </v-expansion-panel-title>
@@ -44,15 +44,16 @@ import {
     EVENT_FETCH_DEVICE
 } from '../constants/constant';
 import { fetchJsons } from '../utils/specific';
+import Monitor from '../components/Graph/Monitor.vue';
 
 export default {
     name: 'MainPage',
-    components: { DeviceSelector, Guidance, TestInfo, ConfigAndRun },
+    components: { DeviceSelector, Guidance, TestInfo, ConfigAndRun, Monitor },
     data() {
         return {
             selectedDevice: '',
             selectedIp: '',
-            expanded: [1],
+            expanded: [1,4],
             panels: [
                 // FIRST PANEL
                 {
@@ -105,6 +106,19 @@ export default {
                         deviceIp: ""
                     },
                     events: {},
+                },
+
+                // Debug
+                {
+                    title: 'Stat Monitor',
+                    value: 4,
+                    key: 4,
+                    class: 'config-container',
+                    component: 'Monitor',
+                    props: {
+                        deviceId: ""
+                    },
+                    events: {},
                 }
             ],
         };
@@ -128,6 +142,7 @@ export default {
                 this.panels[3].props.atcConfigs = atcConfigSelections.files;
                 this.panels[3].props.deviceId = this.selectedDevice;
                 this.panels[3].props.deviceIp = this.selectedIp;
+                this.panels[4].props.deviceId = this.selectedDevice;
             } catch (err) {
                 this.openToast("Error Getting ATC Configs file", err.message);
             }

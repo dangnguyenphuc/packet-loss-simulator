@@ -203,3 +203,21 @@ def fileHanldler(request, folderName):
         return JsonResponse({"data": "done"})
     else:
         return HttpResponseNotFound("Not found")
+    
+def statHandler(request):
+    if request.method == "GET":
+        statType = request.GET.get("type")
+        deviceId = request.GET.get("id")
+        match statType:
+            case "cpu":
+                cpuUsage = AdbUtils.getCpuUsage(deviceId)
+                print(f"cpu: {cpuUsage}")
+                return JsonResponse({"data": cpuUsage})
+            case "mem":
+                memUsage = AdbUtils.getMemUsage(deviceId) / 1000.0
+                print(f"Mem: {memUsage}")
+                return JsonResponse({"data": memUsage})
+
+        return HttpResponseNotFound("Not found")
+    else:
+        return HttpResponseNotFound("Not found")

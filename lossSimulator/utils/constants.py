@@ -38,8 +38,8 @@ ANDROID_DOWNLOAD_PATH = "Download"
 ANDROID_DOCUMENTS_PATH = "Documents"
 
 ANDROID_HISTOGRAM_PATH = "ZrtcDemoLog/stats_call.log"
-
-PACKAGE = "com.vng.zing.vn.zrtc.demo"
+PACKAGE_DOMAIN = "com.vng.zing.vn"
+PACKAGE = f"{PACKAGE_DOMAIN}.zrtc.demo"
 APP_PACKAGE = f"{PACKAGE}.debug"
 # Zrtc demo app activity
 DEMO_ACTIVITY = f"{PACKAGE}.DemoModeActivity"
