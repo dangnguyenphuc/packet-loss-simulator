@@ -71,9 +71,26 @@ class NetworkUtils:
 class FileUtils:
 
     @staticmethod
+    def writeStat(type, num):
+        with open(FileUtils.getAbsPath(str(settings.BASE_DIR) + "/" + DESKTOP_STATIC_FOLDER + "/..") + "/" + f"{type}.txt", "a") as f:
+            f.write(f"{num}\n")
+
+
+    @staticmethod
     def removeStoringFolder(folder):
         folder = FileUtils.getAbsPath(str(settings.BASE_DIR) + "/" + DESKTOP_STATIC_FOLDER) + "/" + folder
         shutil.rmtree(folder, ignore_errors=True)
+
+    @staticmethod
+    def removeStatFile(type):
+        # Construct absolute file path
+        filePath = os.path.join(
+            FileUtils.getAbsPath(os.path.join(settings.BASE_DIR, DESKTOP_STATIC_FOLDER + "/..")),
+            f"{type}.txt"
+        )
+        # Safely remove the file if it exists
+        if os.path.isfile(filePath):
+            os.remove(filePath)
 
     @staticmethod
     def moveFiles(src, dest):
@@ -557,9 +574,6 @@ class AdbUtils:
                 return -1
 
             output = result.stdout
-
-            # Target line example:
-            # "TOTAL PSS:    90200            TOTAL RSS:   254628       TOTAL SWAP PSS:      398"
             match = re.search(r"TOTAL\s+PSS:\s+([\d,]+)", output)
             if match:
                 value = match.group(1).replace(',', '')
@@ -571,3 +585,64 @@ class AdbUtils:
             return -1
         except Exception:
             return -1
+    
+    def resetAndroid(deviceId: str = None, packageName: str = APP_PACKAGE):
+            cmdKill = ["adb"]
+            if deviceId:
+                cmdKill += ["-s", deviceId]
+            cmdKill += ["shell", "am", "force-stop", packageName]
+
+            subprocess.run(
+                cmdKill,
+                capture_output=True,
+                text=True,
+                timeout=5
+            )
+
+            cmdKill = ["adb"]
+            if deviceId:
+                cmdKill += ["-s", deviceId]
+            cmdKill += ["shell", "am", "clean", packageName]
+
+            subprocess.run(
+                cmdKill,
+                capture_output=True,
+                text=True,
+                timeout=5
+            )
+
+            cmdKill = ["adb"]
+            if deviceId:
+                cmdKill += ["-s", deviceId]
+            cmdKill += ["shell", "am", "kill-all"]
+
+            subprocess.run(
+                cmdKill,
+                capture_output=True,
+                text=True,
+                timeout=5
+            )
+
+            cmdClearCache = ["adb"]
+            if deviceId:
+                cmdClearCache += ["-s", deviceId]
+            cmdClearCache += ["shell", "pm", "trim-caches", "999999999999"]
+
+            subprocess.run(
+                cmdClearCache,
+                capture_output=True,
+                text=True,
+                timeout=5
+            )
+
+            cmdFlushRAM = ["adb"]
+            if deviceId:
+                cmdFlushRAM += ["-s", deviceId]
+            cmdFlushRAM += ["shell", '"echo 3 > /proc/sys/vm/drop_caches"']
+
+            subprocess.run(
+                cmdFlushRAM,
+                capture_output=True,
+                text=True,
+                timeout=5
+            )

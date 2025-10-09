@@ -436,28 +436,6 @@ export default {
       this.$emit(EVENT_OPEN_TOAST, this.$options.name, header, message, timeout);
     },
 
-    async getWavDuration(url) {
-      // fetch only first 44 bytes (WAV header)
-      const response = await fetch(url, { headers: { Range: "bytes=0-43" } })
-      const header = await response.arrayBuffer()
-      const view = new DataView(header)
-
-      // parse WAV header
-      const numChannels = view.getUint16(22, true)
-      const sampleRate = view.getUint32(24, true)
-      const bitsPerSample = view.getUint16(34, true)
-
-      // now fetch the "data" chunk size
-      // but safest: fetch file size via HEAD request
-      const headResp = await fetch(url, { method: "HEAD" })
-      const fileSize = parseInt(headResp.headers.get("Content-Length"))
-
-      // data size = total file size - 44 (header)
-      const dataSize = fileSize - 44
-
-      return dataSize / (sampleRate * numChannels * (bitsPerSample / 8))
-    }
-
   },
   watch: {
     
