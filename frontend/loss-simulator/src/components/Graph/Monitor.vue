@@ -1,6 +1,10 @@
 <template>
   <v-container>
     <v-row class="d-flex flex-column justify-center align-start ga-3">
+        <v-checkbox
+            v-model="enableAutoStop"
+            label="Auto Stop"
+        />
         <v-btn density="compact" color="black" prepend-icon="mdi-record-circle" @click="startCaptureAll" :disabled="isStartCaptureAll">Start Capture All</v-btn>
         <v-btn density="compact" color="red" prepend-icon="mdi-pause-circle" @click="stopCaptureAll">Stop Capture All</v-btn>
         <v-btn density="compact" color="green" prepend-icon="mdi-reload" @click="resetAll" >Reset All</v-btn>
@@ -31,6 +35,7 @@ import {
   EVENT_STOP_MONITORING,
   EVENT_RESET_MONITORING,
   RETRY_DELAY,
+  BENCHMARK_DURATION,
 } from '../../constants/constant'
 import { getStat } from '../../utils/specific';
 
@@ -49,6 +54,8 @@ export default {
       EVENT_STOP_MONITORING,
       EVENT_RESET_MONITORING,
       isStartCaptureAll: false,
+      enableAutoStop: true,
+      autoStopTimer: null,
       // list of graphs - each title must be different
       graphs: [
         {
@@ -76,19 +83,43 @@ export default {
   },
   methods: {
     async startCaptureAll() {
+      try {
+        await getStat({
+          type: "start",
+          id: this.deviceId,
+        });
+      } catch (e) {}
+
+      if (this.autoStopTimer) {
+        clearTimeout(this.autoStopTimer);
+      }
+
       for (let graph of this.graphs)
       {
           await this.startCapture(graph.title);
       }
       this.isStartCaptureAll = true;
+
+      if (this.enableAutoStop) {
+        this.autoStopTimer = setTimeout(async () => {
+          await this.stopCaptureAll();
+        }, BENCHMARK_DURATION);
+      }
+      
     },
 
-    stopCaptureAll() {
+    async stopCaptureAll() {
       for (let graph of this.graphs)
       {
           this.stopCapture(graph.title);   
       }
       this.isStartCaptureAll = false;
+      try {
+        await getStat({
+          type: "stop",
+          id: this.deviceId,
+        });
+      } catch (e) {}
     },
     
     resetAll() {
@@ -96,6 +127,7 @@ export default {
       {
           this.resetMonitor(graph.title);   
       }
+      this.isStartCaptureAll = false;
     },
 
     async startCapture(type) {
@@ -145,9 +177,9 @@ export default {
 
     resetMonitor(type) {
       const graph = this.graphs.find((g) => g.title === type)
-
       clearInterval(graph.timer)
       graph.timer = null
+      console.log(`⏸️ Stop capture for ${type}`)
       graph.series = [{...graph.series[0], data: []}];
     },
   },

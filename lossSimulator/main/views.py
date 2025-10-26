@@ -209,15 +209,21 @@ def statHandler(request):
         statType = request.GET.get("type")
         deviceId = request.GET.get("id")
         match statType:
+            case "start":
+                FileUtils.removeStatFile("cpu")
+                FileUtils.removeStatFile("mem")
+                return JsonResponse({"data": "started"})
             case "cpu":
                 cpuUsage = AdbUtils.getCpuUsage(deviceId)
-                print(f"cpu: {cpuUsage}")
+                FileUtils.writeStat(statType, cpuUsage)
                 return JsonResponse({"data": cpuUsage})
             case "mem":
                 memUsage = AdbUtils.getMemUsage(deviceId) / 1000.0
-                print(f"Mem: {memUsage}")
+                FileUtils.writeStat(statType, memUsage)
                 return JsonResponse({"data": memUsage})
-
+            case "stop":
+                AdbUtils.resetAndroid(deviceId=deviceId)
+                return JsonResponse({"data": "stopped"})
         return HttpResponseNotFound("Not found")
     else:
         return HttpResponseNotFound("Not found")

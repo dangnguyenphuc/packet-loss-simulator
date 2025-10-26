@@ -12,7 +12,9 @@ export const GUIDE_TEXT = `Requirements:
 export const TOAST_TIMEOUT = 3000;
 export const DEFAULT_ATC_TIMEOUT = 20000;
 export const MAX_RETRIES = 5;
-export const RETRY_DELAY = 4000;
+export const RETRY_DELAY = 2000;
+
+export const BENCHMARK_DURATION = 2*60*1000;
 
 export const EVAL_COMPLEX = [
 	// 2,
