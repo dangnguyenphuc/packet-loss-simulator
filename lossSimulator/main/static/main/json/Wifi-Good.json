@@ -1,0 +1,46 @@
+{
+  "down": {
+    "corruption": {
+      "correlation": 0,
+      "percentage": 0.02
+    },
+    "delay": {
+      "correlation": 0,
+      "delay": "5",
+      "jitter": 1
+    },
+    "iptables_options": [],
+    "loss": {
+      "correlation": 0,
+      "percentage": 0.1
+    },
+    "rate": "120000",
+    "reorder": {
+      "correlation": 0,
+      "gap": 0,
+      "percentage": 0.05
+    }
+  },
+  "up": {
+    "corruption": {
+      "correlation": 0,
+      "percentage": 0.02
+    },
+    "delay": {
+      "correlation": 0,
+      "delay": "6",
+      "jitter": 1
+    },
+    "iptables_options": [],
+    "loss": {
+      "correlation": 0,
+      "percentage": 0.1
+    },
+    "rate": "80000",
+    "reorder": {
+      "correlation": 0,
+      "gap": 0,
+      "percentage": 0.05
+    }
+  }
+}

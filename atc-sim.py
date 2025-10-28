@@ -3,34 +3,41 @@ import json
 import time
 import requests
 import sys
+import os
+import random
+import subprocess
 
 # ==== CONFIG ====
 BASE_URL = "http://10.42.0.1:8080/api/v1/shape/"
 DEFAULT_IP = "10.42.0.88"
+PREFIX_FOLDER = "./lossSimulator/main/static/main/json/"
 MAX_RETRY = 3
-STEP = 5
-DELAY_BETWEEN_POSTS = 2  # seconds between POSTs
+DEFAULT_STATE_DURATION = 5   # seconds per state (default)
+DEFAULT_TOTAL_STATES = 100   # total states (default)
+TARGET_PACKAGE = "com.vng.zing.vn.zrtc.demo.debug"
 
-# ==== SAMPLE DATA ====
-SAMPLE_DATA = {
-    "down": {
-        "rate": None,
-        "loss": {"percentage": 0, "correlation": 0},
-        "delay": {"delay": 0, "jitter": 0, "correlation": 0},
-        "corruption": {"percentage": 0, "correlation": 0},
-        "reorder": {"percentage": 0, "correlation": 0, "gap": 0},
-        "iptables_options": []
-    },
-    "up": {
-        "rate": None,
-        "loss": {"percentage": 0, "correlation": 0},
-        "delay": {"delay": 0, "jitter": 0, "correlation": 0},
-        "corruption": {"percentage": 0, "correlation": 0},
-        "reorder": {"percentage": 0, "correlation": 0, "gap": 0},
-        "iptables_options": []
-    }
-}
+NETWORK_CONDITIONS = [
+    "Edge-Lossy.json",            # 0
+    "Edge-Average.json",          # 1
+    "Edge-Good.json",             # 2
+    "2G-DevelopingRural.json",    # 3
+    "2G-DevelopingUrban.json",    # 4
+    "3G-Poor.json",               # 5
+    "3G-Average.json",            # 6
+    "3G-Good.json",               # 7
+    "4G-Poor.json",               # 8
+    "4G-Average.json",            # 9
+    "4G-Good.json",               #10
+    "Wifi-Poor.json",             #11
+    "Wifi-Average.json",          #12
+    "Wifi-Good.json",             #13
+    "5G-Poor.json",               #14
+    "5G-Average.json",            #15
+    "5G-Good.json",               #16
+]
 
+
+# ==== HELPERS ====
 
 def delete_shape(endpoint):
     """Try to delete the shape 3 times"""
@@ -38,72 +45,146 @@ def delete_shape(endpoint):
         try:
             response = requests.delete(endpoint)
             print(f"[DELETE {attempt+1}/3] Status: {response.status_code}")
-            time.sleep(0.5)
+            time.sleep(0.3)
         except Exception as e:
             print(f"[DELETE {attempt+1}/3] Error: {e}")
 
 
-def post_shape(endpoint, data):
-    """POST the shaping configuration"""
+def post_shape(endpoint, data, label):
+    """POST a preloaded JSON network condition"""
     headers = {"Content-Type": "application/json"}
-    status_code = 0
-    retry_time = MAX_RETRY
-
-    while status_code // 200 != 1 and retry_time > 0:
+    for attempt in range(MAX_RETRY):
         try:
             response = requests.post(endpoint, headers=headers, json=data)
-            status_code = response.status_code
-            print(f"[POST] Attempt: {MAX_RETRY - retry_time + 1}, Status: {status_code}")
-            if status_code // 200 == 1:
+            print(f"[POST {attempt+1}/{MAX_RETRY}] {label} -> {response.status_code}")
+            if response.status_code // 200 == 1:
                 return True
         except Exception as e:
-            print(f"[POST] Error: {e}")
-        retry_time -= 1
+            print(f"[POST ERROR] {e}")
         time.sleep(1)
     return False
 
 
-def main(ip):
-    endpoint = f"{BASE_URL}{ip}/"
-    print(f"Target endpoint: {endpoint}")
+def choose_next_index(current_index):
+    """Decide next index based on weighted random behavior"""
+    last_index = len(NETWORK_CONDITIONS) - 1
+    rand = random.random()
 
-    # Step 1: Delete current shape 3 times
+    if current_index == 0:
+        # 50% stay, 50% increase
+        return current_index if rand < 0.5 else random.randint(current_index + 1, last_index)
+    elif current_index == last_index:
+        # 50% stay, 50% decrease
+        return current_index if rand < 0.5 else random.randint(0, current_index - 1)
+    else:
+        if rand < 0.2:
+            return current_index  # 20% same
+        elif rand < 0.6:
+            return random.randint(current_index + 1, last_index)  # 40% increase
+        else:
+            return random.randint(0, current_index - 1)  # 40% decrease
+
+
+def pick_initial_index():
+    """Pick a random starting index ≥ first 3G that contains Average or Good"""
+    candidates = [i for i, name in enumerate(NETWORK_CONDITIONS)
+                  if "3G" in name and ("Average" in name or "Good" in name)]
+    return random.choice(candidates) if candidates else 6  # fallback to 3G-Average
+
+
+def preload_network_data():
+    """Load all JSON files into memory once"""
+    loaded_data = []
+    for filename in NETWORK_CONDITIONS:
+        path = os.path.join(PREFIX_FOLDER, filename)
+        try:
+            with open(path, "r") as f:
+                data = json.load(f)
+                loaded_data.append(data)
+            print(f"[LOAD] {filename} ✅")
+        except Exception as e:
+            print(f"[LOAD ERROR] {filename}: {e}")
+            loaded_data.append(None)
+    return loaded_data
+
+
+def force_stop_package(package_name):
+    """Force stop a running Android app via ADB"""
+    try:
+        print(f"🛑 Forcing stop for package: {package_name}")
+        result = subprocess.run(
+            ["adb", "shell", "am", "force-stop", package_name],
+            capture_output=True,
+            text=True,
+        )
+        if result.returncode == 0:
+            print(f"✅ Successfully stopped package: {package_name}")
+        else:
+            print(f"❌ Failed to stop package: {package_name}\n{result.stderr}")
+    except Exception as e:
+        print(f"⚠️  Error while trying to stop package: {e}")
+
+
+# ==== MAIN ====
+
+def main(ip, state_duration, total_states):
+    endpoint = f"{BASE_URL}{ip}/"
+    print(f"🎯 Target endpoint: {endpoint}")
+
     delete_shape(endpoint)
 
-    # Step 2: Sweep loss percentage up and down
-    loss_values = list(range(0, 81, STEP)) + list(range(75, -1, -STEP))
-    print(f"Starting POST sequence with loss values: {loss_values}")
+    # Preload JSONs into memory
+    print("\n📂 Preloading all network condition JSON files...")
+    NETWORK_DATA = preload_network_data()
+    print("✅ All JSONs loaded.\n")
+
+    # Pick starting index
+    current_index = pick_initial_index()
+    print(f"🚀 Starting simulation from: {NETWORK_CONDITIONS[current_index]} (index {current_index})")
 
     try:
-        for loss in loss_values:
-            SAMPLE_DATA["down"]["loss"]["percentage"] = loss
-            print(f"\n➡️  Setting down.loss.percentage = {loss}%")
-            success = post_shape(endpoint, SAMPLE_DATA)
+        for step in range(1, total_states + 1):
+            label = NETWORK_CONDITIONS[current_index]
+            data = NETWORK_DATA[current_index]
+
+            if data is None:
+                print(f"⚠️ Skipping {label} (unloaded or invalid)")
+                current_index = choose_next_index(current_index)
+                continue
+
+            print(f"\n[STATE {step}/{total_states}] Applying: {label}")
+            success = post_shape(endpoint, data, label)
             if success:
-                print(f"✅ Applied loss = {loss}% successfully")
+                print(f"✅ Applied {label} successfully.")
             else:
-                print(f"❌ Failed to apply loss = {loss}%")
-            time.sleep(DELAY_BETWEEN_POSTS)
+                print(f"❌ Failed to apply {label}.")
+
+            time.sleep(state_duration)
+
+            # Determine next state
+            next_index = choose_next_index(current_index)
+            print(f"🔁 Transition: {label} -> {NETWORK_CONDITIONS[next_index]} (index {next_index})")
+            current_index = next_index
 
     except KeyboardInterrupt:
-        print("\n⚠️  Interrupted by user (Ctrl+C). Cleaning up...")
-        try:
-            response = requests.delete(endpoint)
-            print(f"[CLEANUP DELETE] Status: {response.status_code}")
-        except Exception as e:
-            print(f"[CLEANUP DELETE] Error: {e}")
-        print("🛑 Exiting gracefully.")
-        sys.exit(0)
-
-    print("\n🎯 Sequence complete.")
-    # Final cleanup delete (optional)
-    delete_shape(endpoint)
+        print("\n⚠️ Interrupted by user.")
+    finally:
+        print("\n🧹 Cleaning up network shape and stopping app...")
+        delete_shape(endpoint)
+        force_stop_package(TARGET_PACKAGE)
+        print("🏁 Simulation complete.")
 
 
+# ==== ENTRYPOINT ====
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Standalone ATC Shape tool (no Django)")
+    parser = argparse.ArgumentParser(description="Automatic Network Condition Simulator")
     parser.add_argument("--ip", default=DEFAULT_IP, help=f"Target device IP address (default: {DEFAULT_IP})")
+    parser.add_argument("--state_duration", type=int, default=DEFAULT_STATE_DURATION,
+                        help=f"Duration (seconds) per state (default: {DEFAULT_STATE_DURATION})")
+    parser.add_argument("--total_states", type=int, default=DEFAULT_TOTAL_STATES,
+                        help=f"Total number of states to simulate (default: {DEFAULT_TOTAL_STATES})")
+
     args = parser.parse_args()
 
-    main(args.ip)
+    main(args.ip, args.state_duration, args.total_states)
 
