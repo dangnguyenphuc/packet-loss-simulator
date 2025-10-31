@@ -2,7 +2,6 @@ import argparse
 import json
 import time
 import requests
-import sys
 import os
 import random
 import subprocess
@@ -54,7 +53,7 @@ SAMPLE_DATA = {
     "iptables_options": [],
     "loss": {
       "correlation": 2,
-      "percentage": 55
+      "percentage": 20
     },
     "rate": "500",
     "reorder": {
@@ -176,27 +175,27 @@ def run_single_mode(endpoint):
     print(f"Starting SINGLE mode sweep: {loss_values}")
 
     try:
-        for loss in loss_values:
-            SAMPLE_DATA["down"]["loss"]["percentage"] = loss
-            print(f"\n➡️  Setting down.loss.percentage = {loss}%")
-            success = post_shape(endpoint, SAMPLE_DATA, f"loss={loss}")
-            if success:
-                print(f"✅ Applied loss = {loss}% successfully")
-            else:
-                print(f"❌ Failed to apply loss = {loss}%")
-            time.sleep(DELAY_BETWEEN_POSTS)
+        # for loss in loss_values:
+        #     SAMPLE_DATA["down"]["loss"]["percentage"] = loss
+        #     print(f"\n➡️  Setting down.loss.percentage = {loss}%")
+        #     success = post_shape(endpoint, SAMPLE_DATA, f"loss={loss}")
+        #     if success:
+        #         print(f"✅ Applied loss = {loss}% successfully")
+        #     else:
+        #         print(f"❌ Failed to apply loss = {loss}%")
+        #     time.sleep(DELAY_BETWEEN_POSTS)
 
-        for loss in loss_values:
-            SAMPLE_DATA["down"]["loss"]["percentage"] = loss
-            print(f"\n➡️  Setting down.loss.percentage = {loss}%")
+        # for loss in loss_values:
+        #     SAMPLE_DATA["down"]["loss"]["percentage"] = loss
+        #     print(f"\n➡️  Setting down.loss.percentage = {loss}%")
 
 
-        # success = post_shape(endpoint, SAMPLE_DATA, "SAMPLE_DATA")
-        # if success:
-        #     print(f"✅ Applied SAMPLE_DATA successfully")
-        # else:
-        #     print(f"❌ Failed to apply SAMPLE_DATA")
-        # time.sleep(30)
+        success = post_shape(endpoint, SAMPLE_DATA, "SAMPLE_DATA")
+        if success:
+            print(f"✅ Applied SAMPLE_DATA successfully")
+        else:
+            print(f"❌ Failed to apply SAMPLE_DATA")
+        time.sleep(30)
 
     except KeyboardInterrupt:
         print("\n⚠️ Interrupted by user.")
