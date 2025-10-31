@@ -125,14 +125,20 @@ def choose_next_index(current_index):
     else:
         if rand < 0.2:
             return current_index
+            return current_index
         elif rand < 0.6:
             return random.randint(current_index + 1, last_index)
+            return random.randint(current_index + 1, last_index)
         else:
+            return random.randint(0, current_index - 1)
             return random.randint(0, current_index - 1)
 
 
 def pick_initial_index():
     candidates = [i for i, name in enumerate(NETWORK_CONDITIONS)
+                  if ("3G" in name or "4G" in name or "Wifi" in name or "5G" in name)
+                  and ("Average" in name or "Good" in name)]
+    return random.choice(candidates) if candidates else 6
                   if ("3G" in name or "4G" in name or "Wifi" in name or "5G" in name)
                   and ("Average" in name or "Good" in name)]
     return random.choice(candidates) if candidates else 6
@@ -245,6 +251,7 @@ def run_multiple_mode(endpoint, state_duration, total_states):
         print("\n⚠️ Interrupted by user.")
     finally:
         print("\n🧹 Cleaning up (MULTIPLE mode)...")
+        print("\n🧹 Cleaning up (MULTIPLE mode)...")
         delete_shape(endpoint)
         force_stop_package(TARGET_PACKAGE)
         print("🏁 Simulation complete.")
@@ -256,12 +263,20 @@ if __name__ == "__main__":
     parser.add_argument("--ip", default=DEFAULT_IP, help=f"Target device IP address (default: {DEFAULT_IP})")
     parser.add_argument("--mode", choices=["single", "multiple"], default="single",
                         help="Choose simulation mode: 'single' for sample data, 'multiple' for 100-step random simulation")
+    parser.add_argument("--mode", choices=["single", "multiple"], default="single",
+                        help="Choose simulation mode: 'single' for sample data, 'multiple' for 100-step random simulation")
     parser.add_argument("--state_duration", type=int, default=DEFAULT_STATE_DURATION,
                         help=f"Duration (seconds) per state (default: {DEFAULT_STATE_DURATION})")
     parser.add_argument("--total_states", type=int, default=DEFAULT_TOTAL_STATES,
                         help=f"Total number of states to simulate (default: {DEFAULT_TOTAL_STATES})")
 
     args = parser.parse_args()
+    endpoint = f"{BASE_URL}{args.ip}/"
+
+    if args.mode == "multiple":
+        run_multiple_mode(endpoint, args.state_duration, args.total_states)
+    else:
+        run_single_mode(endpoint)
     endpoint = f"{BASE_URL}{args.ip}/"
 
     if args.mode == "multiple":
