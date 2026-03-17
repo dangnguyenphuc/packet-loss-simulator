@@ -227,3 +227,6 @@ def statHandler(request):
         return HttpResponseNotFound("Not found")
     else:
         return HttpResponseNotFound("Not found")
+    
+def installZrtcDemo(request):
+    return HttpResponse("HelloWorld")

@@ -6,6 +6,7 @@ urlpatterns = [
     path("api/json/<str:filename>", views.getJson, name="getJson"),
     path("api/devices", views.getAllDevices, name="getDevices"),
     path("api/ip/<str:deviceId>", views.getDeviceIps, name="getDeviceIps"),
+    path("api/install", views.installZrtcDemo, name="installDemoApp"),
     path("api/info", views.getInfo, name="getInfo"),
     path("api/run", views.runZrtcAndroidApp, name="runZrtcAndroidApp"),
     path("api/run/<str:taskId>", views.runTaskHandler, name="runTaskHandler"),

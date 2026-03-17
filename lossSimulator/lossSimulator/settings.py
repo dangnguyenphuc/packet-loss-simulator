@@ -11,6 +11,8 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
 from pathlib import Path
+import subprocess
+import os
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -22,6 +24,34 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = 'django-insecure-n6mva@t85^_7%=mv69a-__21m44jmo-bgq3b*n*%(yfgz!)04m'
 
+GITLAB_USERNAME = ""
+GITLAB_PASSWORD = ""
+ZRTC_CORE_URL = ""
+TARGET_BRANCH_NAME = ""
+NDK_PATH = ""
+JVM_17_PATH = ""
+APP_SRC_PATH = ""
+
+configFile = f'{os.fspath(BASE_DIR)}/config.env'
+if os.path.exists(configFile):
+    result = subprocess.run(
+        f"bash -c 'source {configFile} && env'",
+        shell=True,
+        capture_output=True,
+        text=True
+    )
+    env_vars = dict(
+        line.split("=", 1)
+        for line in result.stdout.splitlines()
+        if "=" in line
+    )
+    GITLAB_USERNAME = env_vars.get("GITLAB_USERNAME")
+    GITLAB_PASSWORD = env_vars.get("GITLAB_PASSWORD")
+    TARGET_BRANCH_NAME = env_vars.get("TARGET_BRANCH_NAME")
+    JVM_17_PATH = env_vars.get("JVM_17_PATH")
+    NDK_PATH = env_vars.get("NDK_PATH")
+    APP_SRC_PATH = env_vars.get("APP_SRC_PATH")
+    ZRTC_CORE_URL = f"https://{GITLAB_USERNAME}:{GITLAB_PASSWORD}@{env_vars.get("ZRTC_CORE_URL")}"
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
