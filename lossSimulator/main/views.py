@@ -2,7 +2,7 @@ from django.shortcuts import render
 from django.views.decorators.csrf import csrf_exempt
 from django.http import HttpResponse, JsonResponse
 from django.http import HttpResponseNotFound
-from utils.utils import NetworkUtils, FileUtils, AdbUtils, AudioUtils
+from utils.utils import FileUtils, AdbUtils, AudioUtils
 from utils.android import AndroidAppController
 import json
 from utils.constants import DEFAULT_EVAL_TIMEOUT, DESKTOP_STATIC_FOLDER, DEFAULT_AUDIO_DURATION, DEFAULT_AUDIO_DURATION_OFFSET
@@ -11,137 +11,169 @@ import threading, uuid
 from django.core.cache import cache
 import time
 from threading import Lock
+from django.views import View
+from django.utils.decorators import method_decorator
+
 
 runningTasks = {}
 tasksLock = Lock()
 
-def listJsonFiles(request):
-    if request.method == "GET":
-        return JsonResponse({"files": FileUtils.listAllJsonFiles()})
-    else:
-        return HttpResponseNotFound("Not found")
+class JsonFileListView(View):
+    def get(self, request):
+        try:
+            files = FileUtils.listAllJsonFiles()
+            return JsonResponse({"files": files}, status=200)
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=500)
 
-def getJson(request, filename):
-    if request.method == "GET":
-        return JsonResponse({"data": FileUtils.getJsonContent(filename)})
-    else:
-        return HttpResponseNotFound("Not found")
 
-def getAllDevices(request):
-    allDevices = AdbUtils.getConnectedDevices()
-    print(allDevices)
-    return JsonResponse({"data": allDevices})
+class JsonFileDetailView(View):
+    def get(self, request, filename):
+        try:
+            data = FileUtils.getJsonContent(filename)
+            return JsonResponse({"data": data}, status=200)
+        except FileNotFoundError:
+            return JsonResponse({"error": "File not found"}, status=404)
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=500)
 
-def getDeviceIps(request, deviceId):
-    ips = AdbUtils.getDeviceIps(deviceId)
-    return JsonResponse({"data": ips})
+class DeviceListView(View):
+    def get(self, request):
+        devices = AdbUtils.getConnectedDevices()
+        return JsonResponse({"data": devices}, status=200)
 
-def getInfo(request):
-        deviceId = request.GET.get("deviceId", None)
-        appPath = AdbUtils.getAppPath()
-        zrtcDemoApp = AdbUtils.getZrtcDemoApp()
 
-        return JsonResponse(
-        {
-            "pc":  
-            {
+class DeviceIpView(View):
+    def get(self, request, device_id):
+        ips = AdbUtils.getDeviceIps(device_id)
+        return JsonResponse({"data": ips}, status=200)
+
+class InfoView(View):
+    def get(self, request):
+        device_id = request.GET.get("deviceId")
+
+        app_path = AdbUtils.getAppPath()
+        zrtc_demo_app = AdbUtils.getZrtcDemoApp()
+
+        return JsonResponse({
+            "pc": {
                 "audio": AudioUtils.getAudioFileWithDurations(),
-                "recordFolder": str(settings.BASE_DIR) + "/" + DESKTOP_STATIC_FOLDER
+                "recordFolder": f"{settings.BASE_DIR}/{DESKTOP_STATIC_FOLDER}",
             },
-            "android":
-            {
-                "uploadAudioFolder": appPath,
-                "recordAudioFolder": appPath,
-                "histogramStorePath": AdbUtils.getHistogramPath(deviceId),
-                "appPackage": (zrtcDemoApp if AdbUtils.isContainZrtcDemoApp(deviceId) else ""),
-                "activity": AdbUtils.getZrtcDemoAppTargetActivities(deviceId)
+            "android": {
+                "uploadAudioFolder": app_path,
+                "recordAudioFolder": app_path,
+                "histogramStorePath": AdbUtils.getHistogramPath(device_id),
+                "appPackage": (
+                    zrtc_demo_app if AdbUtils.isContainZrtcDemoApp(device_id) else ""
+                ),
+                "activity": AdbUtils.getZrtcDemoAppTargetActivities(device_id),
             }
-        })
+        }, status=200)
 
-@csrf_exempt
-def runZrtcAndroidApp(request):
-    with tasksLock:
-        runningTasks.clear()
-    try :
-        requestData = json.loads(request.body.decode("utf-8"))
-        if ("deviceId" not in requestData or requestData["deviceId"] == ""):
-            raise Exception("Missing deviceId field")
-    except Exception as e:
-        return JsonResponse(
-            {
-                "error": "Invalid JSON payload", 
+@method_decorator(csrf_exempt, name="dispatch")
+class TaskRunView(View):
+    def post(self, request):
+        with tasksLock:
+            runningTasks.clear()
+
+        try:
+            data = json.loads(request.body.decode("utf-8"))
+            device_id = data.get("deviceId")
+
+            if not device_id:
+                raise ValueError("Missing deviceId")
+
+        except Exception as e:
+            return JsonResponse({
+                "error": "Invalid JSON payload",
                 "details": str(e)
-            },
-            status=400
+            }, status=400)
+
+        timeout = data.get("time", DEFAULT_EVAL_TIMEOUT)
+        enable_opus_plc = data.get("enableOpusPlc", True)
+        enable_opus_dred = data.get("enableOpusDred", False)
+        complexity = data.get("complexity", 5)
+        folder_name = data.get("folderName")
+
+        task_id = str(uuid.uuid4())
+        start_event = threading.Event()
+        stop_event = threading.Event()
+
+        thread = threading.Thread(
+            target=runApp,
+            args=(
+                task_id, device_id,
+                enable_opus_plc, enable_opus_dred,
+                timeout, start_event, stop_event,
+                complexity, folder_name
+            )
         )
-    deviceId = requestData["deviceId"]
-    if ("time" in requestData):
-        timeout = requestData["time"]
-    else:
-        timeout = DEFAULT_EVAL_TIMEOUT
-    enableOpusPlc = requestData.get("enableOpusPlc", True)
-    enableOpusDred = requestData.get("enableOpusDred", False)
-    complexity = requestData.get("complexity", 5)
-    folderName = requestData.get("folderName", None)
-    taskId = str(uuid.uuid4())
-    startEvent = threading.Event()
-    stopEvent = threading.Event()
 
-    thread = threading.Thread(target=runApp, args=(taskId, deviceId, enableOpusPlc, enableOpusDred, timeout, startEvent, stopEvent, complexity, folderName))
+        with tasksLock:
+            runningTasks[task_id] = {
+                "thread": thread,
+                "stopEvent": stop_event
+            }
 
-    with tasksLock:
-        runningTasks[taskId] = {
-            "thread": thread,
-            "stopEvent": stopEvent
-        }
+        thread.start()
+        start_event.wait()
 
-    thread.start()
-    startEvent.wait()
-    return JsonResponse({"status": "started", "taskId": taskId})
+        return JsonResponse({
+            "status": "started",
+            "taskId": task_id
+        }, status=202)
 
-@csrf_exempt
-def runTaskHandler(request, taskId):
-    if request.method == "GET":
-        return checkTask(taskId)
-    elif request.method == "DELETE":
-        return stopZrtcAndroidApp(taskId)
-    else:
-        return HttpResponseNotFound("Not found")
+@method_decorator(csrf_exempt, name="dispatch")
+class TaskDetailView(View):
 
-def checkTask(taskId):
-    result = cache.get(taskId)
-    if result:
-        # cache.delete(taskId)
-        flag = False
+    def get(self, request, task_id):
+        return self._check_task(task_id)
+
+    def delete(self, request, task_id):
+        return self._stop_task(task_id)
+
+    def _check_task(self, task_id):
+        result = cache.get(task_id)
+
+        if not result:
+            return JsonResponse({"status": "failed"}, status=404)
+
+        valid_audio_found = False
+
         for audio in result["audioFiles"]:
-            try: 
+            try:
                 if AudioUtils.isValidAudioFile(audio):
-                    print(f"{audio} is valid")
-                    flag = True
+                    valid_audio_found = True
                     break
-                else :
-                    print(f"Passed Audio {audio} with {AudioUtils.getAudioDuration(audio)}")
-            except:
-                print(f"Cannot open {audio}")
-        
-        if flag:
-            result["audioFiles"] = [file.split("public")[-1] for file in result["audioFiles"]]
-            return JsonResponse({"status": "done", "result": result})
-    return JsonResponse({"status": "failed"}) 
+            except Exception:
+                continue
 
-@csrf_exempt
-def stopZrtcAndroidApp(taskId):
-    with tasksLock:
-        task = runningTasks.get(taskId)
-        runningTasks.clear()
+        if valid_audio_found:
+            result["audioFiles"] = [
+                f.split("public")[-1] for f in result["audioFiles"]
+            ]
+            return JsonResponse({"status": "done", "result": result}, status=200)
 
-    if not task:
-        return JsonResponse({"error": "Task not found or already finished"}, status=404)
+        return JsonResponse({"status": "processing"}, status=202)
 
-    # signal the thread to stop
-    task["stopEvent"].set()
+    def _stop_task(self, task_id):
+        with tasksLock:
+            task = runningTasks.get(task_id)
+            runningTasks.clear()
 
-    return JsonResponse({"status": "stopping", "taskId": taskId})
+        if not task:
+            return JsonResponse(
+                {"error": "Task not found or already finished"},
+                status=404
+            )
+
+        task["stopEvent"].set()
+
+        return JsonResponse({
+            "status": "stopping",
+            "taskId": task_id
+        }, status=200)
 
 
 def runApp(taskId, deviceId, enableOpusPlc, enableOpusDred, timeout, startEvent, stopEvent, complexity=None, folderName=None):
@@ -195,38 +227,37 @@ def runApp(taskId, deviceId, enableOpusPlc, enableOpusDred, timeout, startEvent,
         with tasksLock:
             runningTasks.pop(taskId, None)
 
-@csrf_exempt
-def fileHanldler(request, folderName):
-    if request.method == "DELETE":
-        # remove storing folder 
-        FileUtils.removeStoringFolder(folderName)
-        return JsonResponse({"data": "done"})
-    else:
-        return HttpResponseNotFound("Not found")
+@method_decorator(csrf_exempt, name="dispatch")
+class FileView(View):
+    def delete(self, request, folder_name):
+        FileUtils.removeStoringFolder(folder_name)
+        return JsonResponse({"status": "deleted"}, status=200)
     
-def statHandler(request):
-    if request.method == "GET":
-        statType = request.GET.get("type")
-        deviceId = request.GET.get("id")
-        match statType:
-            case "start":
-                FileUtils.removeStatFile("cpu")
-                FileUtils.removeStatFile("mem")
-                return JsonResponse({"data": "started"})
-            case "cpu":
-                cpuUsage = AdbUtils.getCpuUsage(deviceId)
-                FileUtils.writeStat(statType, cpuUsage)
-                return JsonResponse({"data": cpuUsage})
-            case "mem":
-                memUsage = AdbUtils.getMemUsage(deviceId) / 1000.0
-                FileUtils.writeStat(statType, memUsage)
-                return JsonResponse({"data": memUsage})
-            case "stop":
-                AdbUtils.resetAndroid(deviceId=deviceId)
-                return JsonResponse({"data": "stopped"})
-        return HttpResponseNotFound("Not found")
-    else:
-        return HttpResponseNotFound("Not found")
+class StatView(View):
+    def get(self, request):
+        stat_type = request.GET.get("type")
+        device_id = request.GET.get("id")
+
+        if stat_type == "start":
+            FileUtils.removeStatFile("cpu")
+            FileUtils.removeStatFile("mem")
+            return JsonResponse({"status": "started"})
+
+        elif stat_type == "cpu":
+            cpu = AdbUtils.getCpuUsage(device_id)
+            FileUtils.writeStat("cpu", cpu)
+            return JsonResponse({"data": cpu})
+
+        elif stat_type == "mem":
+            mem = AdbUtils.getMemUsage(device_id) / 1000.0
+            FileUtils.writeStat("mem", mem)
+            return JsonResponse({"data": mem})
+
+        elif stat_type == "stop":
+            AdbUtils.resetAndroid(deviceId=device_id)
+            return JsonResponse({"status": "stopped"})
+
+        return JsonResponse({"error": "Invalid type"}, status=400)
     
 def installZrtcDemo(request):
     return HttpResponse("HelloWorld")

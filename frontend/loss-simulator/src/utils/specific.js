@@ -4,7 +4,8 @@ import {
     PROXY_ENDPOINT, 
     IP_ENDPOINT,
     JSON_ENDPOINT,
-    ANDROID_RUN_ENDPOINT,
+    ANDROID_TASK_RUN_ENDPOINT,
+    ANDROID_TASK_DETAIL_ENDPOINT,
     STORE_FOLDER_ENDPOINT,
     STAT_ENDPOINT,
 } from '../constants/api.js';
@@ -19,7 +20,7 @@ export async function fetchDevices() {
 
 export async function fetchDeviceIp(device) {
     try {
-        return await axiosGet(`${IP_ENDPOINT}/${device}`);
+        return await axiosGet(IP_ENDPOINT(device));
     } catch (err) {
         throw new Error(`[GET] Failed to fetch device IPs: ${err.message}`);
     }
@@ -88,7 +89,7 @@ export async function applyConfig(payload = {}, endpoint = PROXY_ENDPOINT) {
     }
 }
 
-export async function runApp(payload = {}, timeout=60000, endpoint = ANDROID_RUN_ENDPOINT) {
+export async function runApp(payload = {}, timeout=60000, endpoint = ANDROID_TASK_RUN_ENDPOINT) {
     try {
         return await axiosPost(endpoint, payload, timeout);
     } catch (err) {
@@ -96,33 +97,33 @@ export async function runApp(payload = {}, timeout=60000, endpoint = ANDROID_RUN
     }
 }
 
-export async function getAppRes(taskId, endpoint = ANDROID_RUN_ENDPOINT) {
+export async function getAppRes(taskId) {
     try {
-        return await axiosGet(`${endpoint}/${taskId}`);
+        return await axiosGet(ANDROID_TASK_DETAIL_ENDPOINT(taskId));
     } catch (err) {
         throw new Error(`[GET] ${endpoint} failed: ${err.message}`);
     }
 }
 
-export async function stopApp(taskId, endpoint = ANDROID_RUN_ENDPOINT) {
+export async function stopApp(taskId) {
     try {
-        return await axiosDelete(`${endpoint}/${taskId}`);
+        return await axiosDelete(ANDROID_TASK_DETAIL_ENDPOINT(taskId));
     } catch (err) {
         throw new Error(`[DELETE] ${endpoint} failed: ${err.message}`);
     }
 }
 
-export async function removeFolder(folderName, endpoint = STORE_FOLDER_ENDPOINT) {
+export async function removeFolder(folderName) {
     try {
-        return await axiosDelete(`${endpoint}/${folderName}`);
+        return await axiosDelete(STORE_FOLDER_ENDPOINT(folderName));
     } catch (err) {
         throw new Error(`[DELETE] ${endpoint} failed: ${err.message}`);
     }
 }
 
-export async function isValidAudioFolder(folderName, endpoint = STORE_FOLDER_ENDPOINT) {
+export async function isValidAudioFolder(folderName) {
     try {
-        return await axiosGet(`${endpoint}/${folderName}`);
+        return await axiosGet(STORE_FOLDER_ENDPOINT(folderName));
     } catch (err) {
         throw new Error(`[DELETE] ${endpoint} failed: ${err.message}`);
     }

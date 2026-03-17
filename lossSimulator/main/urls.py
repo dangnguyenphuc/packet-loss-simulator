@@ -1,15 +1,24 @@
 from django.urls import path
-from . import views
+from .views import (
+    JsonFileListView,
+    JsonFileDetailView,
+    DeviceListView,
+    DeviceIpView,
+    InfoView,
+    TaskRunView,
+    TaskDetailView,
+    FileView,
+    StatView,
+)
 
 urlpatterns = [
-    path("api/json", views.listJsonFiles, name="listJsonFiles"),
-    path("api/json/<str:filename>", views.getJson, name="getJson"),
-    path("api/devices", views.getAllDevices, name="getDevices"),
-    path("api/ip/<str:deviceId>", views.getDeviceIps, name="getDeviceIps"),
-    path("api/install", views.installZrtcDemo, name="installDemoApp"),
-    path("api/info", views.getInfo, name="getInfo"),
-    path("api/run", views.runZrtcAndroidApp, name="runZrtcAndroidApp"),
-    path("api/run/<str:taskId>", views.runTaskHandler, name="runTaskHandler"),
-    path("api/file/<str:folderName>", views.fileHanldler, name="fileHanldler"),
-    path("api/stat", views.statHandler, name="statHandler"),
+    path("api/json", JsonFileListView.as_view(), name="list_json_files"),
+    path("api/json/<str:filename>", JsonFileDetailView.as_view(), name="get_json"),
+    path("api/devices", DeviceListView.as_view(), name="device-list"),
+    path("api/devices/<str:device_id>/ip", DeviceIpView.as_view(), name="device-ips"),
+    path("api/info", InfoView.as_view(), name="info"),
+    path("api/tasks/run", TaskRunView.as_view(), name="task-run"),
+    path("api/tasks/<str:task_id>", TaskDetailView.as_view(), name="task-detail"),
+    path("api/files/<str:folder_name>", FileView.as_view(), name="file-handler"),
+    path("api/stats", StatView.as_view(), name="stats"),
 ]
