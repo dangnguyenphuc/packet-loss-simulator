@@ -14,6 +14,8 @@ import time
 from .plc_mos import PLCMOSEstimator
 import soundfile as sf
 import re
+import sys
+from django.conf import settings
 
 plcmos = PLCMOSEstimator()
 
@@ -75,6 +77,9 @@ class FileUtils:
         with open(FileUtils.getAbsPath(str(settings.BASE_DIR) + "/" + DESKTOP_STATIC_FOLDER + "/..") + "/" + f"{type}.txt", "a") as f:
             f.write(f"{num}\n")
 
+    @staticmethod
+    def removeFolder(folder):
+        shutil.rmtree(folder, ignore_errors=True)
 
     @staticmethod
     def removeStoringFolder(folder):
@@ -296,6 +301,20 @@ class RequestUtils:
             ) 
         
 class AdbUtils:
+    @staticmethod
+    def isDeviceExists(deviceId: str = "") -> bool:
+        cmd = ["adb", "devices"]
+
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        output = result.stdout.strip().splitlines()
+
+        # Skip the first line: "List of devices attached"
+        devices = [line.split()[0] for line in output[1:] if line.strip()]
+
+        if deviceId:
+            return deviceId in devices
+        else:
+            return len(devices) > 0
 
     @staticmethod
     def getDeviceIps(deviceId=None):
@@ -499,6 +518,80 @@ class AdbUtils:
         return APP_PACKAGE
     
     @staticmethod
+    def installAndBuildZrtcDemo(deviceId):
+        try:
+            androidArch = AdbUtils.getAndroidArch(deviceId)
+            if (len(androidArch) <= 0): return False
+    
+            # if app has been already built
+            if os.path.exists(f"{GIT_CLONE_FOLDER}/{settings.APP_SRC_PATH}/app/build/outputs/apk/debug/app-debug.apk"):
+                if AdbUtils.installApp(
+                f"{GIT_CLONE_FOLDER}/{settings.APP_SRC_PATH}/app/build/outputs/apk/debug/app-debug.apk",
+                deviceId):
+                    return False
+                FileUtils.removeFolder(GIT_CLONE_FOLDER)
+                return True
+            
+            # Clone
+            if not os.path.exists(GIT_CLONE_FOLDER):
+                clone_cmd = [
+                    "git", "clone",
+                    "--branch", settings.TARGET_BRANCH_NAME,
+                    "--single-branch",
+                    "--depth", "1",
+                    settings.ZRTC_CORE_URL,
+                    GIT_CLONE_FOLDER
+                ]
+                if subprocess.run(clone_cmd, shell=True, preexec_fn=os.setsid).returncode != 0:
+                    return False
+                
+            # Build core
+            build_core_cmd = f"""
+                rm -rf .git && \
+                sed -i '2s|.*|compilerPath={settings.NDK_PATH}|' projects/nbprojects-android/common.mk && \
+                ./build/android/clean_all.sh && \
+                ./build/android/{androidArch}_build_debug.sh $(nproc)
+            """
+
+            if subprocess.run(build_core_cmd, cwd=GIT_CLONE_FOLDER, shell=True, preexec_fn=os.setsid).returncode != 0:
+                return False
+
+            # Build demo
+            demo_path = os.path.join(GIT_CLONE_FOLDER, settings.APP_SRC_PATH)
+            gradle_file = os.path.join(demo_path, "gradle.properties") 
+            with open(gradle_file, "a") as f: 
+                f.write(f"\norg.gradle.java.home={settings.JVM_17_PATH}\n")
+
+            if subprocess.run("./gradlew installDebug", cwd=demo_path, shell=True, preexec_fn=os.setsid).returncode != 0:
+                return False
+
+            if not AdbUtils.installApp(
+                f"{GIT_CLONE_FOLDER}/{settings.APP_SRC_PATH}/app/build/outputs/apk/debug/app-debug.apk",
+                deviceId):
+                return False
+
+            FileUtils.removeFolder(GIT_CLONE_FOLDER)
+            return True
+
+        except Exception as e:
+            print("Error:", str(e))
+            return False
+            
+
+    @staticmethod
+    def installApp(appPath, deviceId=None):
+        cmd = ["adb"]
+        if deviceId:
+            cmd += ["-s", deviceId]
+        cmd += [
+            "install",
+            appPath
+        ]
+
+        result = subprocess.run(" ".join(cmd), shell=True, capture_output=True, text=True)
+        return result.returncode == 0 and "Success" in result.stdout
+    
+    @staticmethod
     def hasActivity(packageName, activityName, deviceId=None):
         cmd = ["adb"]
         if deviceId:
@@ -510,6 +603,22 @@ class AdbUtils:
 
         result = subprocess.run(" ".join(cmd), shell=True, capture_output=True, text=True)
         return result.returncode == 0 and activityName in result.stdout
+
+    @staticmethod
+    def getAndroidArch(deviceId=None):
+        cmd = ["adb"]
+        if deviceId:
+            cmd += ["-s", deviceId]
+        cmd += [
+            "shell",
+            "getprop ro.product.cpu.abi"
+        ]
+
+        result = subprocess.run(" ".join(cmd), shell=True, capture_output=True, text=True)
+        if (result.returncode != 0 or result.stdout.strip() not in ANDROID_ARCH):
+            return ""
+        
+        return ANDROID_ARCH[result.stdout.strip()]
 
     @staticmethod
     def getZrtcDemoAppTargetActivities(deviceId=None) -> list[str]:

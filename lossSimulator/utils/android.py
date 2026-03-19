@@ -23,7 +23,7 @@ class AndroidAppController:
 
         self.deviceAudioFile = self.defaultPath + "/" + AUDIO_FILE
         AdbUtils.pushFile(STATIC_FOLDER + AUDIO_FILE, self.deviceAudioFile)
-        time.sleep(4)
+        time.sleep(5)
 
         self.stringExtras = {
             "CALL_MODE": callMode,
@@ -36,7 +36,6 @@ class AndroidAppController:
             "ENABLE_OPUS_PLC": False,
             "ENABLE_OPUS_DRED": False
         }
-        
 
     def startApp(self, packageName = None):
         if packageName:

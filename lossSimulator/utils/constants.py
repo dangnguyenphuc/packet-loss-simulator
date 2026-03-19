@@ -7,7 +7,7 @@ NETWORK_ATC_ENDPOINT = "/api/v1/shape/"
 NETWORK_ATC_MAX_RETRY = 5
 
 STATIC_FOLDER = f"{str(settings.BASE_DIR)}/static/"
-JSON_CONFIG_FOLDER = f"{str(settings.BASE_DIR)}/main/static/main/json"
+JSON_CONFIG_FOLDER = f"{str(settings.BASE_DIR)}/static/json"
 AUDIO_TYPE = ".wav"
 LOG_TYPE = ".log"
 
@@ -30,8 +30,13 @@ class CALL_MODE:
     VIDEO = "video"
     GROUP = "group"
 
+ANDROID_ARCH = {
+    "armabi-v7a": "armv7a",
+    "arm64-v8a" : "arm64"
+}
 
 DESKTOP_STATIC_FOLDER = "../frontend/loss-simulator/public/audio/"
+GIT_CLONE_FOLDER = "zrtc"
 AUDIO_FILE = "audio.wav"
 ANDROID_DEMO_PATH = "demoapp"
 ANDROID_DOWNLOAD_PATH = "Download"

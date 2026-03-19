@@ -332,8 +332,7 @@ export default {
         try {
           this.configs[index].status = TEST_STATUS.TESTING;
           this.configs[index].result = null;
-          const startAppRes = await runApp({
-            deviceId: this.deviceId,
+          const startAppRes = await runApp(this.deviceId, {
             time: totalDelay / 1000,
             enableOpusPlc: test.enableOpusPlc,
             enableOpusDred: test.enableOpusDred,
@@ -363,7 +362,9 @@ export default {
               ip: this.deviceIp,
             });
             // wait timer for this config
-            await new Promise((resolve) => setTimeout(resolve, timers[j]));
+            await new Promise((resolve) => setTimeout(resolve, timers[j]+5000));
+            // Check AFTER the long sleep
+            if (this.configs[index].cancelled) return;
           }
 
           if (this.configs[index].cancelled) return;
