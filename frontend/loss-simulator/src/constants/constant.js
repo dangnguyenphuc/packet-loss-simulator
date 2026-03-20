@@ -1,18 +1,13 @@
-export const GUIDE_TEXT = `Requirements: 
+export const GUIDE_TEXT = `Requirements:
+	- Android device already had Zrtc Demo App (if not install by the button below)
 	- Android device already connected to current PC
 	- Android device already allowed neccessary permissions to run the ZrtcDemoApp
-	- Android device already connected to ATC network
-
-1. Device Selector panel is used to choose device and the right network interface using ATC network.
-2. After choosing device, there's information panel to display all information about storing audio path, storing log path, ...
-3. Final panel is used to set ATC config(s) and start running ZrtcDemoApp on Android device:
-	+ Can have multiple run
-	+ Each run can used multiple ATC config(s)`;
+	- Android device already connected to ATC network`;
 
 export const TOAST_TIMEOUT = 3000;
 export const DEFAULT_ATC_TIMEOUT = 20000;
-export const MAX_RETRIES = 5;
-export const RETRY_DELAY = 2000;
+export const MAX_RETRIES = 3;
+export const RETRY_DELAY = 2500;
 
 export const BENCHMARK_DURATION = 2*60*1000;
 

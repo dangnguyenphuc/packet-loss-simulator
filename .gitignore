@@ -9,3 +9,4 @@ frontend/loss-simulator/public/audio/*
 */.env
 lossSimulator/zrtc/*.*
 lossSimulator/zrtc
+lossSimulator/config.env

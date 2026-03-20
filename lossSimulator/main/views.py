@@ -5,7 +5,7 @@ from django.conf import settings
 from django.views import View
 from django.utils.decorators import method_decorator
 
-from utils.utils import FileUtils, AdbUtils, AudioUtils
+from utils.utils import FileUtils, AdbUtils, AudioUtils, StatUtils
 from utils.android import AndroidAppController
 from utils.constants import DEFAULT_EVAL_TIMEOUT, DESKTOP_STATIC_FOLDER, DEFAULT_AUDIO_DURATION, DEFAULT_AUDIO_DURATION_OFFSET
 
@@ -124,14 +124,14 @@ class TaskRunView(View):
                 task_id
             )
         )
+        p.start()
 
         tasks[task_id] = {
-            "thread": p.pid,
+            "thread": [p.pid],
             "type": "install",
             "id": device_id
         }
         
-        p.start()
 
         return JsonResponse({
             "status": "started",
@@ -156,7 +156,7 @@ class TaskRunView(View):
         task_id = str(uuid.uuid4())
         start_event = Event()
 
-        thread = Process(
+        run = Process(
             target=runApp,
             args=(
                 task_id, device_id,
@@ -166,14 +166,28 @@ class TaskRunView(View):
             )
         )
 
-        thread.start()
+        tasks[task_id] ={
+            "thread": [],
+            "type": "run",
+            "id": device_id,
+            "targetFolder": ""
+        }
+
+        run.start()
         start_event.wait()
 
-        tasks[task_id] ={
-            "thread": thread.pid,
-            "type": "run",
-            "id": device_id
-        }
+        stat_monitor = Process(
+            target=StatUtils.getStat,
+            args=(
+                device_id,
+                tasks[task_id]["targetFolder"],
+                timeout
+            )
+        )
+
+        stat_monitor.start()
+
+        tasks[task_id]['thread'] += [stat_monitor.pid, run.pid]
 
         return JsonResponse({
             "status": "started",
@@ -204,7 +218,7 @@ class TaskDetailView(View):
         for audio in result["audioFiles"]:
             print("Check audio", audio)
             try:
-                if AudioUtils.isValidAudioFile(audio):
+                if AudioUtils.isValidAudioFile(audio, result["duration"]):
                     valid_audio_found = True
                     break
             except Exception:
@@ -225,22 +239,24 @@ class TaskDetailView(View):
                 status=404
             )
 
-        pid = task["thread"]
+        pids = task["thread"]
         type = task["type"]
         device_id = task["id"]
 
         try:
-            # 1. Send the termination signal
-            os.kill(pid, signal.SIGTERM)
-            
-            # 2. Reconstruct a process object handle using the PID 
-            # to properly 'wait' on it and clean up the zombie.
-            # Note: In Python multiprocessing, we usually use the original 
-            # 'p' object, but since we only have the PID, we use os.waitpid.
-            
-            # os.WNOHANG means "don't block the Django thread if it's not dead yet"
-            time.sleep(0.1) # Give it a tiny moment to die
-            os.waitpid(pid, os.WNOHANG) 
+
+            for pid in pids:
+                # 1. Send the termination signal
+                os.kill(pid, signal.SIGTERM)
+                
+                # 2. Reconstruct a process object handle using the PID 
+                # to properly 'wait' on it and clean up the zombie.
+                # Note: In Python multiprocessing, we usually use the original 
+                # 'p' object, but since we only have the PID, we use os.waitpid.
+                
+                # os.WNOHANG means "don't block the Django thread if it's not dead yet"
+                time.sleep(0.1) # Give it a tiny moment to die
+                os.waitpid(pid, os.WNOHANG) 
 
         except ProcessLookupError:
             # Process was already dead, no zombie to worry about
@@ -298,13 +314,17 @@ def buildApp(deviceId, task_id):
         "info": True if result else False,
         "time": time.time()
     }
-    
-    tasks.pop(task_id, None)
     myCache[task_id] = result
 
 
 def runApp(taskId, deviceId, enableOpusPlc, enableOpusDred, timeout, startEvent, complexity=None, folderName=None):
     controller = AndroidAppController(deviceId=deviceId)
+    staticFolder = FileUtils.getAbsPath(str(settings.BASE_DIR) + "/" + DESKTOP_STATIC_FOLDER)
+    specificFolder = staticFolder + "/" + \
+                    f"com{complexity}_{"plc_" if enableOpusPlc else "normal_"}{folderName + "_" if folderName is not None else ""}{controller.timestamp}"
+    tmpDict = tasks.get(taskId)
+    tmpDict["targetFolder"] = specificFolder
+    tasks[taskId] = tmpDict
     controller.stopAll()
     try:
         controller.boolExtras["ENABLE_OPUS_PLC"] = enableOpusPlc
@@ -316,8 +336,6 @@ def runApp(taskId, deviceId, enableOpusPlc, enableOpusDred, timeout, startEvent,
         controller.press("back")
         controller.stopApp()
 
-        staticFolder = FileUtils.getAbsPath(str(settings.BASE_DIR) + "/" + DESKTOP_STATIC_FOLDER)
-        specificFolder = staticFolder + "/" + f"com{complexity}_{"plc_" if enableOpusPlc else "normal_"}{folderName + "_" if folderName is not None else ""}{controller.timestamp}"
         # pull audio files
         FileUtils.makeDir(specificFolder)
         AdbUtils.pullFiles(controller.storePath, specificFolder, deviceId)
@@ -335,6 +353,7 @@ def runApp(taskId, deviceId, enableOpusPlc, enableOpusDred, timeout, startEvent,
 
             result = {
                 "time": time.time(),
+                "duration": timeout,
                 "audioFiles": audioFiles,
                 "zrtcLog": logFiles
             }
@@ -343,5 +362,3 @@ def runApp(taskId, deviceId, enableOpusPlc, enableOpusDred, timeout, startEvent,
         print(f"[runApp] Exception: {e}")
         startEvent.set()
         controller.stopAll()
-    
-    tasks.pop(taskId, None)

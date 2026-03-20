@@ -207,7 +207,7 @@ export default {
         atcConfigs: [
           {
             id: Date.now() + "_" + i,
-            select: null,
+            select: "",
             jsonData: "",
             timer: { h: 0, m: 0, s: DEFAULT_ATC_TIMEOUT/1000 },
           }
@@ -303,134 +303,136 @@ export default {
     },
 
     async startAndroidApp(index) {
+      if (this.configs[index].status == TEST_STATUS.TESTING) return;
       this.configs[index].cancelled = false;
       this.configs[index].result = null;
       const test = this.configs[index];
-        let totalDelay = 0;
-        let atcConfigName = "";
-        const timers = test.atcConfigs.map(({ select, timer, jsonData }) => {
-          
+      let totalDelay = 0;
+      let atcConfigName = "";
+      const timers = test.atcConfigs.map(({ select, timer, jsonData }) => {
+        
+        if (select.length) {
           let selectString = select.split(".").at(0);
-
           if (atcConfigName.length == 0) atcConfigName = selectString;
           else atcConfigName += "-" + selectString;
+        }
 
-          try {
-            let data = JSON.parse(jsonData);
-            atcConfigName += `loss${data.down.loss.percentage}`;
-          } catch {
-            atcConfigName += "loss0";
-          }
-          const { h, m, s } = timer;
-          let delay = (h * 3600 + m * 60 + s) * 1000;
-          if (delay <= 0) {
-            delay = DEFAULT_ATC_TIMEOUT;
-          }
-          totalDelay += delay;
-          return delay;
-        });
         try {
-          this.configs[index].status = TEST_STATUS.TESTING;
-          this.configs[index].result = null;
-          const startAppRes = await runApp(this.deviceId, {
-            time: totalDelay / 1000,
-            enableOpusPlc: test.enableOpusPlc,
-            enableOpusDred: test.enableOpusDred,
-            folderName: atcConfigName,
-            complexity: test.complexity
-          });
+          let data = JSON.parse(jsonData);
+          atcConfigName += `loss${data.down.loss.percentage}`;
+        } catch {
+          atcConfigName += "loss0";
+        }
+        const { h, m, s } = timer;
+        let delay = (h * 3600 + m * 60 + s) * 1000;
+        if (delay <= 0) {
+          delay = DEFAULT_ATC_TIMEOUT;
+        }
+        totalDelay += delay;
+        return delay;
+      });
 
-          // console.log("run app with params:", {
-          //   deviceId: this.deviceId,
-          //   time: totalDelay / 1000,
-          //   enableOpusPlc: test.enableOpusPlc,
-          //   folderName: atcConfigName,
-          //   complexity: test.complexity
-          // })
-          
-          if (!startAppRes || startAppRes.status !== "started") {
-            throw new Error("Android App: Cannot start App");
-          }
+      try {
+        this.configs[index].status = TEST_STATUS.TESTING;
+        this.configs[index].result = null;
+        const startAppRes = await runApp(this.deviceId, {
+          time: totalDelay / 1000,
+          enableOpusPlc: test.enableOpusPlc,
+          enableOpusDred: test.enableOpusDred,
+          folderName: atcConfigName,
+          complexity: test.complexity
+        });
 
-          this.configs[index].taskId = startAppRes.taskId;
-          for (let j = 0; j < test.atcConfigs.length; j++) {
-            if (this.configs[index].cancelled) return;
-            const curConfig = test.atcConfigs[j];
+        // console.log("run app with params:", {
+        //   deviceId: this.deviceId,
+        //   time: totalDelay / 1000,
+        //   enableOpusPlc: test.enableOpusPlc,
+        //   folderName: atcConfigName,
+        //   complexity: test.complexity
+        // })
+        
+        if (!startAppRes || startAppRes.status !== "started") {
+          throw new Error("Android App: Cannot start App");
+        }
 
+        this.configs[index].taskId = startAppRes.taskId;
+        for (let j = 0; j < test.atcConfigs.length; j++) {
+          if (this.configs[index].cancelled) return;
+          const curConfig = test.atcConfigs[j];
+
+          // if really got jsonData
+          if (curConfig.jsonData)
             await applyConfig({
-              data: JSON.parse(curConfig.jsonData || "{}"),
+              data: JSON.parse(curConfig.jsonData),
               ip: this.deviceIp,
             });
-            // wait timer for this config
-            await new Promise((resolve) => setTimeout(resolve, timers[j]+5000));
-            // Check AFTER the long sleep
-            if (this.configs[index].cancelled) return;
-          }
 
+          // wait timer for this config
+          await new Promise((resolve) => setTimeout(resolve, timers[j]));
+          // Check AFTER the long sleep
           if (this.configs[index].cancelled) return;
-          try {
-            await deleteShape({ ip: this.deviceIp });
-          } catch {}
-          let runAppRes = null;
-          
-          await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY));
-          
-          let err = undefined;
-          for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-            if (this.configs[index].cancelled) return;
-            runAppRes = await getAppRes(startAppRes.taskId);
-            if (
-              runAppRes &&
-              runAppRes.status === "done" &&
-              runAppRes.result.audioFiles?.length > 0 &&
-              runAppRes.result.zrtcLog?.length > 0
-            ) {
-              // Success
-              test.result = {
-                status: RES_STATUS.SUCCESS,
-                audioFiles: runAppRes.result.audioFiles,
-                logFile: runAppRes.result.zrtcLog[0],
-              };
-              test.status = TEST_STATUS.PASS;
-              this.configs[index].taskId = "";
-              return;
-            } else if (runAppRes &&
-              runAppRes.status === "done" &&
-              runAppRes.result.zrtcLog.length <= 0) {
-                err = new Error("Error pull audio files")
-                err.storeFolder = runAppRes.result.zrtcLog[0]
-                                  .split("/")
-                                  .slice(-2, -1)
-                                  .join("/");
-                break;
-            }
-
-            if (attempt < MAX_RETRIES) {
-              // Wait before retrying
-              await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY));
-            }
-          }
-
-          if (err != undefined) {
-            throw err
-          }
-
-          throw new Error("Max retries reached !")
-
-          
-        } catch (err) {
-          if (err.storeFolder) {
-            removeFolder(err.storeFolder);
-          }
-          this.configs[index].taskId = "";
-          // this.stopAndroidApp(index);
-          if (this.configs[index].cancelled) return;
-          test.result = {
-            status: RES_STATUS.FAILED,
-            errorMessage: err.message,
-          };
-          test.status = TEST_STATUS.FAIL;
         }
+
+        if (this.configs[index].cancelled) return;
+        try {
+          await deleteShape({ ip: this.deviceIp });
+        } catch {}
+        let runAppRes = null;
+        
+        await new Promise((resolve) => setTimeout(resolve, 5000));
+        
+        let err = undefined;
+        for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+          if (this.configs[index].cancelled) return;
+          runAppRes = await getAppRes(startAppRes.taskId);
+          console.log(runAppRes)
+          if (
+            runAppRes &&
+            runAppRes.status === "done" &&
+            runAppRes.result.audioFiles?.length > 0 &&
+            runAppRes.result.zrtcLog?.length > 0
+          ) {
+            // Success
+            test.result = {
+              status: RES_STATUS.SUCCESS,
+              audioFiles: runAppRes.result.audioFiles,
+              logFile: runAppRes.result.zrtcLog[0],
+            };
+            test.status = TEST_STATUS.PASS;
+            break;
+          } else if (runAppRes &&
+            runAppRes.status === "done" &&
+            runAppRes.result.zrtcLog.length <= 0) {
+              err = new Error("Error pull audio files")
+              err.storeFolder = runAppRes.result.zrtcLog[0]
+                                .split("/")
+                                .slice(-2, -1)
+                                .join("/");
+              throw err;
+          }
+
+          if (attempt < MAX_RETRIES) {
+            // Wait before retrying
+            await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY));
+          }
+        }
+      } catch (err) {
+        if (err.storeFolder) {
+          removeFolder(err.storeFolder);
+        }
+        // this.stopAndroidApp(index);
+        if (this.configs[index].cancelled) return;
+        test.result = {
+          status: RES_STATUS.FAILED,
+          errorMessage: err.message,
+        };
+        test.status = TEST_STATUS.FAIL;
+      }
+
+      try {
+          await stopApp(this.configs[index].taskId);
+        this.configs[index].taskId = "";
+      } catch {}
     },
 
     openToast(componentName="", header = "", message = "", timeout = TOAST_TIMEOUT) {

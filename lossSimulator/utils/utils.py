@@ -26,11 +26,11 @@ class DateTimeUtils:
         return datetime.now(tz).strftime("%d-%m-%Y_%H%M%S")
 class AudioUtils:
     @staticmethod
-    def isValidAudioFile(filePath: str) -> bool:
+    def isValidAudioFile(filePath: str, timeout = DEFAULT_AUDIO_DURATION) -> bool:
         try:
             data, sr = sf.read(filePath)
             plcmos.run(data, sr)
-            return AudioUtils.getAudioDuration(filePath) >= DEFAULT_AUDIO_DURATION - DEFAULT_AUDIO_DURATION_OFFSET
+            return AudioUtils.getAudioDuration(filePath) >= timeout - DEFAULT_AUDIO_DURATION_OFFSET
         except:
             return False
 
@@ -73,8 +73,9 @@ class NetworkUtils:
 class FileUtils:
 
     @staticmethod
-    def writeStat(type, num):
-        with open(FileUtils.getAbsPath(str(settings.BASE_DIR) + "/" + DESKTOP_STATIC_FOLDER + "/..") + "/" + f"{type}.txt", "a") as f:
+    def writeStat(path, type, num):
+        if path[-1] == "/": path = path[:-1]
+        with open(path + "/" + f"{type}.txt", "a") as f:
             f.write(f"{num}\n")
 
     @staticmethod
@@ -87,10 +88,10 @@ class FileUtils:
         shutil.rmtree(folder, ignore_errors=True)
 
     @staticmethod
-    def removeStatFile(type):
+    def removeStatFile(type, path):
         # Construct absolute file path
         filePath = os.path.join(
-            FileUtils.getAbsPath(os.path.join(settings.BASE_DIR, DESKTOP_STATIC_FOLDER + "/..")),
+            path,
             f"{type}.txt"
         )
         # Safely remove the file if it exists
@@ -524,7 +525,7 @@ class AdbUtils:
             if (len(androidArch) <= 0): return False
     
             # if app has been already built
-            if os.path.exists(f"{GIT_CLONE_FOLDER}/{settings.APP_SRC_PATH}/app/build/outputs/apk/debug/app-debug.apk"):
+            if os.path.isfile(f"{GIT_CLONE_FOLDER}/{settings.APP_SRC_PATH}/app/build/outputs/apk/debug/app-debug.apk"):
                 if AdbUtils.installApp(
                 f"{GIT_CLONE_FOLDER}/{settings.APP_SRC_PATH}/app/build/outputs/apk/debug/app-debug.apk",
                 deviceId):
@@ -533,20 +534,19 @@ class AdbUtils:
                 return True
             
             # Clone
-            if not os.path.exists(GIT_CLONE_FOLDER):
-                clone_cmd = [
-                    "git", "clone",
-                    "--branch", settings.TARGET_BRANCH_NAME,
-                    "--single-branch",
-                    "--depth", "1",
-                    settings.ZRTC_CORE_URL,
-                    GIT_CLONE_FOLDER
-                ]
-                if subprocess.run(clone_cmd, shell=True, preexec_fn=os.setsid).returncode != 0:
-                    return False
+            FileUtils.removeFolder(GIT_CLONE_FOLDER)
+            clone_cmd = f"""
+                git clone --branch {settings.TARGET_BRANCH_NAME} \
+                --single-branch --depth 1 \
+                {settings.ZRTC_CORE_URL} \
+                {GIT_CLONE_FOLDER}
+            """
+            if subprocess.run(clone_cmd, shell=True, preexec_fn=os.setsid).returncode != 0:
+                return False
                 
             # Build core
             build_core_cmd = f"""
+                pwd &&
                 rm -rf .git && \
                 sed -i '2s|.*|compilerPath={settings.NDK_PATH}|' projects/nbprojects-android/common.mk && \
                 ./build/android/clean_all.sh && \
@@ -563,11 +563,6 @@ class AdbUtils:
                 f.write(f"\norg.gradle.java.home={settings.JVM_17_PATH}\n")
 
             if subprocess.run("./gradlew installDebug", cwd=demo_path, shell=True, preexec_fn=os.setsid).returncode != 0:
-                return False
-
-            if not AdbUtils.installApp(
-                f"{GIT_CLONE_FOLDER}/{settings.APP_SRC_PATH}/app/build/outputs/apk/debug/app-debug.apk",
-                deviceId):
                 return False
 
             FileUtils.removeFolder(GIT_CLONE_FOLDER)
@@ -755,3 +750,19 @@ class AdbUtils:
                 text=True,
                 timeout=5
             )
+
+class StatUtils:
+    @staticmethod
+    def getStat(device_id, path, timeout):
+        if not os.path.exists(path):
+            os.makedirs(path)
+
+        FileUtils.removeStatFile("cpu", path)
+        FileUtils.removeStatFile("mem", path)
+
+        curTime = 0
+        while curTime < timeout:
+            curTime += 1
+            FileUtils.writeStat(path, "cpu", AdbUtils.getCpuUsage(device_id))
+            FileUtils.writeStat(path, "mem", AdbUtils.getMemUsage(device_id) / 1000.0)
+            time.sleep(1)

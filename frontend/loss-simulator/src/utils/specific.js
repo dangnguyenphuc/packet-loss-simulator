@@ -5,6 +5,7 @@ import {
     IP_ENDPOINT,
     JSON_ENDPOINT,
     ANDROID_TASK_RUN_ENDPOINT,
+    ANDROID_TASK_INSTALL_ENDPOINT,
     ANDROID_TASK_DETAIL_ENDPOINT,
     STORE_FOLDER_ENDPOINT,
     STAT_ENDPOINT,
@@ -103,6 +104,14 @@ export async function runApp(device, payload = {}, timeout=60000) {
         return await axiosPost(ANDROID_TASK_RUN_ENDPOINT(device), payload, timeout);
     } catch (err) {
         throw new Error(`[POST] ${ANDROID_TASK_RUN_ENDPOINT(device)} failed: ${err.message}`);
+    }
+}
+
+export async function installApp(device, payload = {}, timeout=60000) {
+    try {
+        return await axiosPost(ANDROID_TASK_INSTALL_ENDPOINT(device), payload, timeout);
+    } catch (err) {
+        throw new Error(`[POST] ${ANDROID_TASK_INSTALL_ENDPOINT(device)} failed: ${err.message}`);
     }
 }
 

@@ -53,7 +53,7 @@ export default {
         return {
             selectedDevice: '',
             selectedIp: '',
-            expanded: [1,4],
+            expanded: [0,1],
             panels: [
                 // FIRST PANEL
                 {
@@ -64,6 +64,7 @@ export default {
                     component: 'Guidance',
                     props: {
                         content: GUIDE_TEXT,
+                        deviceId: "",
                     },
                     events: {},
                 },
@@ -108,18 +109,18 @@ export default {
                     events: {},
                 },
 
-                // Debug
-                {
-                    title: 'Stat Monitor',
-                    value: 4,
-                    key: 4,
-                    class: 'config-container',
-                    component: 'Monitor',
-                    props: {
-                        deviceId: ""
-                    },
-                    events: {},
-                }
+                // // Debug
+                // {
+                //     title: 'Stat Monitor',
+                //     value: 4,
+                //     key: 4,
+                //     class: 'config-container',
+                //     component: 'Monitor',
+                //     props: {
+                //         deviceId: ""
+                //     },
+                //     events: {},
+                // }
             ],
         };
     },
@@ -134,15 +135,15 @@ export default {
         async handleCompletedFetchDevice(value) {
             
             if(!value) return;
-            this.expanded = [1,2,3];
+            this.expanded = [0, 1,2,3];
             // fetch defined ATC Configs
             try {
                 const atcConfigSelections = await fetchJsons();
                 if (!atcConfigSelections.hasOwnProperty("files")) throw new Error("Response ATC Configs doesn't have \"files\" field")
-                this.panels[3].props.atcConfigs = atcConfigSelections.files;
-                this.panels[3].props.deviceId = this.selectedDevice;
-                this.panels[3].props.deviceIp = this.selectedIp;
-                this.panels[4].props.deviceId = this.selectedDevice;
+                this.panels[0].props.deviceId = this.selectedDevice;
+                this.panels[2].props.deviceId = this.selectedDevice;
+                // this.panels[4].props.atcConfigs = atcConfigSelections.files;
+                // this.panels[4].props.deviceId = this.selectedDevice;
             } catch (err) {
                 this.openToast("Error Getting ATC Configs file", err.message);
             }
