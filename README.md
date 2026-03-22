@@ -1,7 +1,7 @@
 # README.md
 ## 1. Requirements:
 
-- Download ZRTC Demo App at commit [dangnp/android/demoapp_record_inout_audio](https://www.youtube.com/watch?v=xvFZjo5PgG0)
+- Download your own ZRTC version. For example my app at commit [dangnp/android/demoapp_record_inout_audio](https://www.youtube.com/watch?v=xvFZjo5PgG0)
 
 - Clone whole project at [Master](https://github.com/dangnguyenphuc/packet-loss-simulator)
 
@@ -147,6 +147,7 @@ def writeString(self, str_val):
     ```
 #### 2.2.2 Auto run:
 - Note: Linux based only
+- Read zalo docs utility for newcommers to get the real [config.env](lossSimulator/config.env) file
 - Go to Project most outside folder
 - In Makefile, change these variables based on your needs:
 
