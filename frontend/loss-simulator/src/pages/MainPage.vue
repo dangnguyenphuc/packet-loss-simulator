@@ -2,7 +2,7 @@
     <v-container class="main-container">
         <v-row justify="center">
             <v-col>
-                <h1>Hello, User!</h1>
+                <h1>Hello, {{ username }}!</h1>
             </v-col>
         </v-row>
         <v-expansion-panels v-model="expanded" multiple>
@@ -43,7 +43,7 @@ import {
     EVENT_UPDATE_DEVICE_IP,
     EVENT_FETCH_DEVICE
 } from '../constants/constant';
-import { fetchJsons } from '../utils/specific';
+import { fetchJsons, fetchUser } from '../utils/specific';
 import Monitor from '../components/Graph/Monitor.vue';
 
 export default {
@@ -51,6 +51,7 @@ export default {
     components: { DeviceSelector, Guidance, TestInfo, ConfigAndRun, Monitor },
     data() {
         return {
+            username: '', // just make fun
             selectedDevice: '',
             selectedIp: '',
             expanded: [0,1],
@@ -125,6 +126,15 @@ export default {
         };
     },
     methods: {
+        async getUsername() {
+            try{
+                const result = await fetchUser();
+                this.username = result.username;
+            } catch {
+                this.username = "nobody";
+            }
+
+        },
         handleFetchDevice(value) {
             this.selectedDevice = value;
             this.panels[2].props.deviceId = value;
@@ -159,6 +169,9 @@ export default {
             this.$emit(EVENT_OPEN_TOAST, header, message, timeout);
         },
     },
+    created() {
+        this.getUsername();
+    }
 };
 </script>
 

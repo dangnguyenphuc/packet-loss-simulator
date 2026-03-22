@@ -8,8 +8,16 @@ import {
     ANDROID_TASK_INSTALL_ENDPOINT,
     ANDROID_TASK_DETAIL_ENDPOINT,
     STORE_FOLDER_ENDPOINT,
-    STAT_ENDPOINT,
+    USER_ENDPOINT,
 } from '../constants/api.js';
+
+export async function fetchUser() {
+    try {
+        return await axiosGet(USER_ENDPOINT);
+    } catch (err) {
+        throw new Error(`[GET] Failed to fetch username: ${err.message}`);
+    }
+}
 
 export async function fetchDevices() {
     try {
@@ -147,7 +155,7 @@ export async function isValidAudioFolder(folderName) {
     }
 }
 
-export async function getStat(payload, endpoint = STAT_ENDPOINT) {
+export async function getStat(payload, endpoint) {
     try {
         return await axiosGet(endpoint, payload);
     } catch (err) {

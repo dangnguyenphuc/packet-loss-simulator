@@ -73,6 +73,10 @@ class NetworkUtils:
 class FileUtils:
 
     @staticmethod
+    def getUsername():
+        return os.getlogin()
+
+    @staticmethod
     def writeStat(path, type, num):
         if path[-1] == "/": path = path[:-1]
         with open(path + "/" + f"{type}.txt", "a") as f:

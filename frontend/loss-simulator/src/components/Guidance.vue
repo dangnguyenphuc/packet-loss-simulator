@@ -4,6 +4,7 @@
     </div>
     <div class="mt-5 d-flex flex-row justify-center align-center ga-2">
         <v-btn 
+        :disable="!this.deviceId || this.deviceId.length <= 0"
         :color="status === TEST_STATUS.FAIL ? 'red' : 'green'"
         @click="startInstall"
         >

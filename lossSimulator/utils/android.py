@@ -33,8 +33,7 @@ class AndroidAppController:
         }
         self.intExtras = None
         self.boolExtras = {
-            "ENABLE_OPUS_PLC": False,
-            "ENABLE_OPUS_DRED": False
+            "ENABLE_OPUS_PLC": False
         }
 
     def startApp(self, packageName = None):
@@ -124,8 +123,9 @@ class AndroidAppController:
         else:
             AdbUtils.startActivityWithExtras(self.packageName, activity, self.serial, self.stringExtras, self.intExtras, self.boolExtras)
 
-    def startEval(self, startEvent, activity=[LOGIN_ACTIVITY, MAIN_ACTIVITY]):
+    def startEval(self, startEvent = None, activity=[LOGIN_ACTIVITY, MAIN_ACTIVITY]):
         self.startActivity(activity[0])
         self.waitForActivity(activity[1])
-        startEvent.set()
+        if startEvent:
+            startEvent.set()
 

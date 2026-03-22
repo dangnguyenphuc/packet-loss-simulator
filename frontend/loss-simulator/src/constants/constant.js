@@ -12,16 +12,20 @@ export const RETRY_DELAY = 2500;
 export const BENCHMARK_DURATION = 2*60*1000;
 
 export const EVAL_COMPLEX = [
-	// 2,
-	// 3,
-	// 4,
-	// 5,
-	// 6,
+
+	5,
 	7,
-	8,
-	9,
-	10
+	// 9,
+	// 10
 ];
+
+export const EVAL_DEC_COMPLEX = [
+	5,
+	7,
+	9,
+	// 10
+];
+
 export const EVAL_NETWORK_TYPE = [
 	// 3g-good
 	{
@@ -36,23 +40,15 @@ export const EVAL_NETWORK_TYPE = [
 
 ]
 export const EVAL_LOSS_PERCENTAGE = [
-	// 40,37,35,33,30,27,25,23,21,18,
-	// 15,
-	12,9,
-	6,
-	3,0
+	0, 10, 20, 30, 35, 40, 45, 50, 60, 70, 75, 80, 90
 ]
 export const EVAL_NORMAL_AND_PLC = [
 	'normal', 
 	'plc',
 ]
-export const EVAL_NORMAL_AND_DRED = [
-	'normal', 
-	// cmt dred if dont want to gen dred test cases
-	'dred',
+export const EVAL_DRED = [
+	0, 20, 40, 60, 80, 90
 ]
-
-export const NUMBER_OF_SAMPLE_CONFIGS = EVAL_COMPLEX.length * EVAL_NETWORK_TYPE.length * EVAL_LOSS_PERCENTAGE.length * EVAL_NORMAL_AND_PLC.length * EVAL_NORMAL_AND_DRED.length;
 
 /*
 \\\\\\\\\\\\\\\\\\\\\\\\

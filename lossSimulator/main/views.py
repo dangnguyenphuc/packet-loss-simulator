@@ -20,6 +20,10 @@ manager = Manager()
 myCache = manager.dict()
 tasks = manager.dict()
 
+class UsernameView(View):
+    def get(self, request):
+        return JsonResponse({"username": FileUtils.getUsername()}, status=200)
+
 class JsonFileListView(View):
     def get(self, request):
         try:
@@ -148,8 +152,9 @@ class TaskRunView(View):
             return self.INVALID_JSON_PAYLOAD(e)
 
         timeout = data.get("time", DEFAULT_EVAL_TIMEOUT)
-        enable_opus_plc = data.get("enableOpusPlc", True)
-        enable_opus_dred = data.get("enableOpusDred", False)
+        enable_opus_plc = data.get("enableOpusPlc", False)
+        dec_complexity = data.get("decComplexity", 6)
+        dred_duration = data.get("dredDuration", 0)
         complexity = data.get("complexity", 5)
         folder_name = data.get("folderName")
 
@@ -160,7 +165,7 @@ class TaskRunView(View):
             target=runApp,
             args=(
                 task_id, device_id,
-                enable_opus_plc, enable_opus_dred,
+                enable_opus_plc, dred_duration, dec_complexity,
                 timeout, start_event,
                 complexity, folder_name
             )
@@ -317,7 +322,7 @@ def buildApp(deviceId, task_id):
     myCache[task_id] = result
 
 
-def runApp(taskId, deviceId, enableOpusPlc, enableOpusDred, timeout, startEvent, complexity=None, folderName=None):
+def runApp(taskId, deviceId, enableOpusPlc, dredDuration, decComplexity, timeout, startEvent, complexity=None, folderName=None):
     controller = AndroidAppController(deviceId=deviceId)
     staticFolder = FileUtils.getAbsPath(str(settings.BASE_DIR) + "/" + DESKTOP_STATIC_FOLDER)
     specificFolder = staticFolder + "/" + \
@@ -328,7 +333,8 @@ def runApp(taskId, deviceId, enableOpusPlc, enableOpusDred, timeout, startEvent,
     controller.stopAll()
     try:
         controller.boolExtras["ENABLE_OPUS_PLC"] = enableOpusPlc
-        controller.boolExtras["ENABLE_OPUS_DRED"] = enableOpusDred
+        controller.stringExtras["DRED_DURATION"] = dredDuration
+        controller.stringExtras["OPUS_DEC_COMPLEXITY"] = decComplexity
         controller.stringExtras["OPUS_COMPLEXITY"] = complexity
         controller.startEval(startEvent)
         time.sleep(timeout)

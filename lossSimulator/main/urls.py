@@ -1,5 +1,6 @@
 from django.urls import path
 from .views import (
+    UsernameView,
     JsonFileListView,
     JsonFileDetailView,
     DeviceListView,
@@ -12,6 +13,7 @@ from .views import (
 )
 
 urlpatterns = [
+    path("api/user", UsernameView.as_view(), name="list_json_files"),
     path("api/json", JsonFileListView.as_view(), name="list_json_files"),
     path("api/json/<str:filename>", JsonFileDetailView.as_view(), name="get_json"),
     path("api/devices", DeviceListView.as_view(), name="device-list"),

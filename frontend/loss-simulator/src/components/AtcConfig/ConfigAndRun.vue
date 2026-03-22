@@ -68,16 +68,9 @@
                     class="d-flex align-center justify-start"
                 />
               </v-col>
-              <v-col>
-                <v-checkbox
-                    v-model="test.enableOpusDred"
-                    label="Enable Opus Dred"
-                    class="d-flex align-center justify-start"
-                />
-              </v-col>
               <v-col class="d-flex justify-center align-center ga-3">
                 <span>
-                  Complexity
+                  Enc Complex
                 </span>
                 <v-select 
                 v-model="test.complexity"
@@ -86,6 +79,34 @@
                 :items="complexityOptions" 
                 hide-details
               />
+              </v-col>
+              <v-col class="d-flex justify-center align-center ga-3">
+                <span>
+                  Dec Complex
+                </span>
+                <v-select 
+                v-model="test.decComplexity"
+                style="max-width: 100px"
+                density="compact"
+                :items="complexityOptions" 
+                hide-details
+              />
+              </v-col>
+              <v-col class="justify-center align-center ga-3">
+                <span>
+                  DRED Duration
+                </span>
+                <div class="d-flex justify-center align-center">
+                <div style="width: 120px">
+                  <v-text-field
+                    v-model.number="test.dredDuration"
+                    type="number"
+                    density="compact"
+                    clearable
+                  ></v-text-field>
+                </div>
+              </div>
+                
               </v-col>
             </div>
             <AtcConfig 
@@ -122,12 +143,12 @@ import {
   TOAST_TIMEOUT, 
   MAX_RETRIES, 
   RETRY_DELAY,
-  NUMBER_OF_SAMPLE_CONFIGS,
   EVAL_COMPLEX,
   EVAL_LOSS_PERCENTAGE,
   EVAL_NORMAL_AND_PLC,
   EVAL_NETWORK_TYPE,
-  EVAL_NORMAL_AND_DRED,
+  EVAL_DEC_COMPLEX,
+  EVAL_DRED
 } from "../../constants/constant"
 import AtcConfig from "./AtcConfig.vue";
 import Result from "./Result.vue";
@@ -154,8 +175,12 @@ export default {
   },
   methods: {
     validateNumTests() {
-      if (this.numTests === "test") {
-        this.generateSampleConfigs();
+      if (this.numTests.trim() === "plc") {
+        console.log("Hellnaw");
+        this.generateSampleConfigsForPlc();
+      } else if (this.numTests.trim() === "dred") {
+        console.log("Hellnaw 2");
+        this.generateSampleConfigsForDred();
       } else {
         try {
           let value = parseInt(this.numTests, 10);
@@ -174,30 +199,59 @@ export default {
       this.expanded = this.configs.map((_, i) => i);
     },
 
-    generateSampleConfigs() {
+    generateSampleConfigsForPlc() {
       this.configs = [];
-      const eachComplexTests = EVAL_NETWORK_TYPE.length * EVAL_LOSS_PERCENTAGE.length * EVAL_NORMAL_AND_PLC.length * EVAL_NORMAL_AND_DRED.length;
-
-      for (let i = 0; i < NUMBER_OF_SAMPLE_CONFIGS; i += 1) {
-        const curComplex = EVAL_COMPLEX[Math.trunc(i / eachComplexTests)];
-        const curNetworkType = EVAL_NETWORK_TYPE[(Math.trunc(i/eachComplexTests * EVAL_NORMAL_AND_DRED.length) % EVAL_NETWORK_TYPE.length)];
-        const networkType = curNetworkType.name;
-        let networkData = curNetworkType.data;
-        const curLoss = EVAL_LOSS_PERCENTAGE[Math.trunc(i/(EVAL_NORMAL_AND_PLC.length * EVAL_NORMAL_AND_DRED.length))%EVAL_LOSS_PERCENTAGE.length];
-        const curUsePlcFlag = EVAL_NORMAL_AND_PLC[Math.trunc(i/EVAL_NORMAL_AND_DRED.length) % EVAL_NORMAL_AND_PLC.length] === 'normal';
-        const curUseDredFlag = EVAL_NORMAL_AND_DRED[i % EVAL_NORMAL_AND_DRED.length] === 'dred'
-
-        try {
-          let json = JSON.parse(networkData);
-          json.down.loss.percentage = curLoss;
-          networkData = JSON.stringify(json);
-        } catch {}
-        // console.log(`Test ${i}\nComplex: ${curComplex}\nPLC Flag: ${curUsePlcFlag}\nNetType: ${networkType}\njson: ${networkData}`)
-        this.configs.push(this.createTestWithParams(i, curComplex, curUsePlcFlag, curUseDredFlag, networkType, networkData));
+      for (let a = 0; a < EVAL_DEC_COMPLEX.length; a+=1) {
+        const curDecComplex = EVAL_DEC_COMPLEX[a];
+        for (let b = 0; b < EVAL_NETWORK_TYPE.length; b += 1) {
+          const curNetwork = EVAL_NETWORK_TYPE[b];
+          const networkType = curNetwork.name;
+          let networkData = curNetwork.data;
+          for(let c = 0; c < EVAL_LOSS_PERCENTAGE.length; c+=1) {
+            const curLoss = EVAL_LOSS_PERCENTAGE[c];
+            for (let d = 0; d < EVAL_NORMAL_AND_PLC.length; d+=1) {
+              const curUsePlcFlag = EVAL_NORMAL_AND_PLC[d] === 'plc';
+              try {
+                let json = JSON.parse(networkData);
+                json.down.loss.percentage = curLoss;
+                networkData = JSON.stringify(json);
+              } catch {}
+              // console.log(`Test ${i}\nComplex: ${curComplex}\nPLC Flag: ${curUsePlcFlag}\nNetType: ${networkType}\njson: ${networkData}`)
+              this.configs.push(this.createTestWithParamsPlc(a*b*c+d, curDecComplex, curUsePlcFlag, networkType, networkData));
+            }
+          }
+        }
       }
 
       // this.configs = Array.from({ length: NUMBER_OF_SAMPLE_CONFIGS }, (_, i) => this.createTest(i));
       // this.expanded = this.configs.map((_, i) => i);
+    },
+
+    generateSampleConfigsForDred() {
+      this.configs = [];
+      for (let a = 0; a < EVAL_COMPLEX.length; a+=1) {
+        const curComplex = EVAL_COMPLEX[a];
+        for (let b = 0; b < EVAL_DEC_COMPLEX.length; b+=1) {
+          const curDecComplex = EVAL_DEC_COMPLEX[b];
+          for (let c = 0; c < EVAL_DRED.length; c+=1) {
+            const curDredDur = EVAL_DRED[c];
+            for (let d = 0; d < EVAL_NETWORK_TYPE.length; d+=1) {
+              const curNetwork = EVAL_NETWORK_TYPE[d];
+              const networkType = curNetwork.name;
+              let networkData = curNetwork.data;
+              for (let e = 0; e < EVAL_LOSS_PERCENTAGE.length; e+=1) {
+                const curLoss = EVAL_LOSS_PERCENTAGE[e];
+                try {
+                  let json = JSON.parse(networkData);
+                  json.down.loss.percentage = curLoss;
+                  networkData = JSON.stringify(json);
+                } catch {}
+                this.configs.push(this.createTestWithParamsDred(a*b*c*d+e, curComplex, curDecComplex, curDredDur, networkType, networkData));
+              }
+            }
+          }
+        }
+      }
     },
 
     createTest(i = 0) {
@@ -213,15 +267,16 @@ export default {
           }
         ],
         complexity: 5,
+        decComplexity: 6,
+        dredDuration: 10,
         taskId: "",
         cancelled: false,
-        enableOpusPlc: true,
-        enableOpusDred: true,
+        enableOpusPlc: false,
         result: null,
       };
     },
 
-    createTestWithParams(index, complexity, usePlc, useDred, networkType, jsonString) {
+    createTestWithParamsPlc(index, complexity, usePlc, networkType, jsonString) {
       return {
         id: Date.now() + `${complexity}_${usePlc}_${index}`,
         status: TEST_STATUS.PENDING,
@@ -233,11 +288,32 @@ export default {
             timer: { h: 0, m: 0, s: DEFAULT_ATC_TIMEOUT/1000 },
           }
         ],
-        complexity: complexity,
+        decComplexity: complexity,
         taskId: "",
         cancelled: false,
         enableOpusPlc: usePlc,
-        enableOpusDred: useDred,
+        result: null,
+      };
+    },
+
+    createTestWithParamsDred(index, complexity, decComplexity, dredDuration, networkType, jsonString) {
+      return {
+        id: Date.now() + `${complexity}_${decComplexity}_${dredDuration}_${index}`,
+        status: TEST_STATUS.PENDING,
+        atcConfigs: [
+          {
+            id: Date.now() + "_" + `${complexity}_${decComplexity}_${dredDuration}_${index}`,
+            select: networkType,
+            jsonData: jsonString,
+            timer: { h: 0, m: 0, s: DEFAULT_ATC_TIMEOUT/1000 },
+          }
+        ],
+        complexity: complexity,
+        decComplexity: decComplexity,
+        dredDuration: dredDuration,
+        taskId: "",
+        cancelled: false,
+        enableOpusPlc: false,
         result: null,
       };
     },
@@ -338,9 +414,10 @@ export default {
         const startAppRes = await runApp(this.deviceId, {
           time: totalDelay / 1000,
           enableOpusPlc: test.enableOpusPlc,
-          enableOpusDred: test.enableOpusDred,
           folderName: atcConfigName,
-          complexity: test.complexity
+          complexity: test.complexity,
+          decComplexity: test.decComplexity,
+          dredDuration: test.dredDuration
         });
 
         // console.log("run app with params:", {
