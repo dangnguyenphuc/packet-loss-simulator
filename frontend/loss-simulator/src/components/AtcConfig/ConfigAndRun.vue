@@ -176,10 +176,8 @@ export default {
   methods: {
     validateNumTests() {
       if (this.numTests.trim() === "plc") {
-        console.log("Hellnaw");
         this.generateSampleConfigsForPlc();
       } else if (this.numTests.trim() === "dred") {
-        console.log("Hellnaw 2");
         this.generateSampleConfigsForDred();
       } else {
         try {
@@ -338,7 +336,7 @@ export default {
       }
       
       for (let i = 0; i < this.configs.length; i++) {
-        while (true && !this.configs[i].cancelled) {
+        while (!this.configs[i].cancelled) {
           await this.startAndroidApp(i);
           await new Promise((resolve) => setTimeout(resolve, DEFAULT_REQUEST_TIMEOUT));
 
@@ -347,10 +345,9 @@ export default {
           } else {
             console.log(`Retrying test ${i}...`);
           }
+          // wait 2.5s for next test
+          await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY));
         }
-
-        // wait 2.5s for next test
-        await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY));
       }
     },
     
@@ -465,7 +462,6 @@ export default {
         for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
           if (this.configs[index].cancelled) return;
           runAppRes = await getAppRes(startAppRes.taskId);
-          console.log(runAppRes)
           if (
             runAppRes &&
             runAppRes.status === "done" &&
@@ -494,7 +490,7 @@ export default {
           if (attempt < MAX_RETRIES) {
             // Wait before retrying
             await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY));
-          }
+          } else throw new Error("Max temps reached!")
         }
       } catch (err) {
         if (err.storeFolder) {

@@ -12,6 +12,8 @@ nmcli connection modify Hotspot \
   connection.interface-name "$LAN_INTERFACE"
 
 nmcli con up Hotspot
+
+systemctl disable ufw
 ##################
 
 
