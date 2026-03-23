@@ -353,6 +353,7 @@ def runApp(taskId, deviceId, enableOpusPlc, dredDuration, decComplexity, timeout
 
         try: 
             FileUtils.moveFiles(specificFolder + "/" + "_".join(specificFolder.split("_")[-2:]), specificFolder)
+            FileUtils.removeFolder(specificFolder + "/" + controller.storePath.split("/")[-1])
         finally:
             audioFiles = FileUtils.getAudioFiles(specificFolder)
             logFiles = FileUtils.getLogFiles(specificFolder)

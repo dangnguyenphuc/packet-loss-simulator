@@ -348,6 +348,9 @@ export default {
             console.log(`Retrying test ${i}...`);
           }
         }
+
+        // wait 2.5s for next test
+        await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY));
       }
     },
     
@@ -395,9 +398,9 @@ export default {
 
         try {
           let data = JSON.parse(jsonData);
-          atcConfigName += `loss${data.down.loss.percentage}`;
+          atcConfigName += `_loss-${data.down.loss.percentage}`;
         } catch {
-          atcConfigName += "loss0";
+          atcConfigName += "loss-0";
         }
         const { h, m, s } = timer;
         let delay = (h * 3600 + m * 60 + s) * 1000;

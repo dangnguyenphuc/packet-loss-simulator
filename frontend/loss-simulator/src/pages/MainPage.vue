@@ -137,22 +137,23 @@ export default {
         },
         handleFetchDevice(value) {
             this.selectedDevice = value;
-            this.panels[2].props.deviceId = value;
+            this.panels[3].props.deviceId = value;
         },
         handleFetchDeviceIp(value) {
             this.selectedIp = value;
+            this.panels[3].props.deviceIp = value;
         },
         async handleCompletedFetchDevice(value) {
             
             if(!value) return;
-            this.expanded = [0, 1,2,3];
+            this.expanded = [0, 1, 2, 3];
             // fetch defined ATC Configs
             try {
                 const atcConfigSelections = await fetchJsons();
                 if (!atcConfigSelections.hasOwnProperty("files")) throw new Error("Response ATC Configs doesn't have \"files\" field")
                 this.panels[0].props.deviceId = this.selectedDevice;
                 this.panels[2].props.deviceId = this.selectedDevice;
-                // this.panels[4].props.atcConfigs = atcConfigSelections.files;
+                this.panels[3].props.atcConfigs = atcConfigSelections.files;
                 // this.panels[4].props.deviceId = this.selectedDevice;
             } catch (err) {
                 this.openToast("Error Getting ATC Configs file", err.message);
