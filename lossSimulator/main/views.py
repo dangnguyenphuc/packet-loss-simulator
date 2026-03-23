@@ -326,7 +326,7 @@ def runApp(taskId, deviceId, enableOpusPlc, dredDuration, decComplexity, timeout
     controller = AndroidAppController(deviceId=deviceId)
     staticFolder = FileUtils.getAbsPath(str(settings.BASE_DIR) + "/" + DESKTOP_STATIC_FOLDER)
     specificFolder = staticFolder + "/" + \
-                    f"com{complexity}_{"plc_" if enableOpusPlc else "normal_"}{folderName + "_" if folderName is not None else ""}{controller.timestamp}"
+                    f"en-{complexity}_dec-{decComplexity}_{"plc_" if enableOpusPlc else "normal_"}{"dred-"+str(dredDuration)+"_"}{folderName + "_" if folderName is not None else ""}{controller.timestamp}"
     tmpDict = tasks.get(taskId)
     tmpDict["targetFolder"] = specificFolder
     tasks[taskId] = tmpDict
