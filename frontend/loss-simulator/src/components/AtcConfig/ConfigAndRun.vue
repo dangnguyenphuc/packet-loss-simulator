@@ -148,7 +148,8 @@ import {
   EVAL_NORMAL_AND_PLC,
   EVAL_NETWORK_TYPE,
   EVAL_DEC_COMPLEX,
-  EVAL_DRED
+  EVAL_DRED,
+  MAX_CONFIG_SIZE
 } from "../../constants/constant"
 import AtcConfig from "./AtcConfig.vue";
 import Result from "./Result.vue";
@@ -167,6 +168,7 @@ export default {
     return {
       numTests: "0",
       configs: [],
+      configsBuffer: [],
       expanded: [],
       TEST_STATUS,
       RES_STATUS,
@@ -215,7 +217,11 @@ export default {
                 networkData = JSON.stringify(json);
               } catch {}
               // console.log(`Test ${i}\nComplex: ${curComplex}\nPLC Flag: ${curUsePlcFlag}\nNetType: ${networkType}\njson: ${networkData}`)
-              this.configs.push(this.createTestWithParamsPlc(a*b*c+d, curDecComplex, curUsePlcFlag, networkType, networkData));
+              if (this.configs.length < MAX_CONFIG_SIZE)
+                this.configs.push(this.createTestWithParamsPlc(a*b*c+d, curDecComplex, curUsePlcFlag, networkType, networkData));
+              else
+                this.configsBuffer.push(this.createTestWithParamsPlc(a*b*c+d, curDecComplex, curUsePlcFlag, networkType, networkData));
+
             }
           }
         }
@@ -231,6 +237,7 @@ export default {
         const curComplex = EVAL_COMPLEX[a];
         for (let b = 0; b < EVAL_DEC_COMPLEX.length; b+=1) {
           const curDecComplex = EVAL_DEC_COMPLEX[b];
+          if (curComplex <= 7 && curDecComplex <= 6) continue;
           for (let c = 0; c < EVAL_DRED.length; c+=1) {
             const curDredDur = EVAL_DRED[c];
             for (let d = 0; d < EVAL_NETWORK_TYPE.length; d+=1) {
@@ -244,7 +251,10 @@ export default {
                   json.down.loss.percentage = curLoss;
                   networkData = JSON.stringify(json);
                 } catch {}
-                this.configs.push(this.createTestWithParamsDred(a*b*c*d+e, curComplex, curDecComplex, curDredDur, networkType, networkData));
+                if (this.configs.length < MAX_CONFIG_SIZE)
+                  this.configs.push(this.createTestWithParamsDred(a*b*c*d+e, curComplex, curDecComplex, curDredDur, networkType, networkData));
+                else
+                  this.configsBuffer.push(this.createTestWithParamsDred(a*b*c*d+e, curComplex, curDecComplex, curDredDur, networkType, networkData));
               }
             }
           }
@@ -303,7 +313,9 @@ export default {
             id: Date.now() + "_" + `${complexity}_${decComplexity}_${dredDuration}_${index}`,
             select: networkType,
             jsonData: jsonString,
-            timer: { h: 0, m: 0, s: DEFAULT_ATC_TIMEOUT/1000 },
+            timer: { h: 0, m: 0, s: 
+              DEFAULT_ATC_TIMEOUT/1000 
+            },
           }
         ],
         complexity: complexity,
@@ -327,23 +339,38 @@ export default {
       this.expanded.push(this.configs.length - 1);
     },
 
-    async runTests() {
+    resetTests() {
       for (let i = 0; i < this.configs.length; i++) {
         this.configs[i].taskId = "";
         this.configs[i].result = null;
         this.configs[i].cancelled = false;
         this.configs[i].status = TEST_STATUS.PENDING;
       }
-      
-      for (let i = 0; i < this.configs.length; i++) {
-        while (!this.configs[i].cancelled) {
-          await this.startAndroidApp(i);
+    },
+
+    async runTests() {
+      this.resetTests();
+
+      const totalTests = this.configs.length + this.configsBuffer.length;
+      let factor = 0;
+      console.log(totalTests);
+      for (let i = 0; i < totalTests; i++) {
+
+        if (i == MAX_CONFIG_SIZE * (factor+1)) {
+          this.configs = [];
+          this.configs = this.configsBuffer.splice(0, MAX_CONFIG_SIZE);
+          factor += 1;
+        }
+        const idx = i - MAX_CONFIG_SIZE*factor;
+
+        while (!this.configs[idx].cancelled) {
+          await this.startAndroidApp(idx);
           await new Promise((resolve) => setTimeout(resolve, DEFAULT_REQUEST_TIMEOUT));
 
-          if (this.configs[i].status === TEST_STATUS.PASS) {
+          if (this.configs[idx].status === TEST_STATUS.PASS) {
             break;
           } else {
-            console.log(`Retrying test ${i}...`);
+            console.log(`Retrying test ${idx}...`);
           }
           // wait 2.5s for next test
           await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY));

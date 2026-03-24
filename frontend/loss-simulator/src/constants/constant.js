@@ -11,19 +11,24 @@ export const RETRY_DELAY = 2500;
 
 export const BENCHMARK_DURATION = 2*60*1000;
 
+export const MAX_CONFIG_SIZE = 50;
+
 export const EVAL_COMPLEX = [
 
-	5,
+	6,
 	7,
-	// 9,
-	// 10
+	8,
+	9,
+	10
 ];
 
 export const EVAL_DEC_COMPLEX = [
 	5,
+	6,
 	7,
+	8,
 	9,
-	// 10
+	10
 ];
 
 export const EVAL_NETWORK_TYPE = [
@@ -40,14 +45,31 @@ export const EVAL_NETWORK_TYPE = [
 
 ]
 export const EVAL_LOSS_PERCENTAGE = [
-	0, 10, 20, 30, 35, 40, 45, 50, 60, 70, 75, 80, 90
+	0, 
+	10, 
+	20, 
+	30, 
+	35, 
+	40, 
+	45, 
+	50, 
+	60, 
+	70, 
+	75, 
+	80, 
+	90
 ]
 export const EVAL_NORMAL_AND_PLC = [
 	'normal', 
 	'plc',
 ]
 export const EVAL_DRED = [
-	0, 20, 40, 60, 80, 90
+	0, 
+	20, 
+	40, 
+	60, 
+	80, 
+	90
 ]
 
 /*
