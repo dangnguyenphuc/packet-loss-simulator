@@ -7,6 +7,7 @@ import {
     ANDROID_TASK_RUN_ENDPOINT,
     ANDROID_TASK_INSTALL_ENDPOINT,
     ANDROID_TASK_DETAIL_ENDPOINT,
+    ANDROID_TASK_MOVE_ENDPOINT,
     STORE_FOLDER_ENDPOINT,
     USER_ENDPOINT,
 } from '../constants/api.js';
@@ -120,6 +121,14 @@ export async function installApp(device, payload = {}, timeout=60000) {
         return await axiosPost(ANDROID_TASK_INSTALL_ENDPOINT(device), payload, timeout);
     } catch (err) {
         throw new Error(`[POST] ${ANDROID_TASK_INSTALL_ENDPOINT(device)} failed: ${err.message}`);
+    }
+}
+
+export async function moveAudios(device, payload = {}, timeout=60000) {
+    try {
+        return await axiosPost(ANDROID_TASK_MOVE_ENDPOINT(device), payload, timeout);
+    } catch (err) {
+        throw new Error(`[POST] ${ANDROID_TASK_MOVE_ENDPOINT(device)} failed: ${err.message}`);
     }
 }
 

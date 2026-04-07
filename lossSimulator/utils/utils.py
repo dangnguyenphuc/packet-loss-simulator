@@ -702,8 +702,6 @@ class AdbUtils:
 
             subprocess.run(
                 cmdKill,
-                capture_output=True,
-                text=True,
                 timeout=5
             )
 
@@ -714,8 +712,6 @@ class AdbUtils:
 
             subprocess.run(
                 cmdKill,
-                capture_output=True,
-                text=True,
                 timeout=5
             )
 
@@ -726,8 +722,6 @@ class AdbUtils:
 
             subprocess.run(
                 cmdKill,
-                capture_output=True,
-                text=True,
                 timeout=5
             )
 
@@ -738,8 +732,6 @@ class AdbUtils:
 
             subprocess.run(
                 cmdClearCache,
-                capture_output=True,
-                text=True,
                 timeout=5
             )
 
@@ -749,10 +741,7 @@ class AdbUtils:
             cmdFlushRAM += ["shell", '"echo 3 > /proc/sys/vm/drop_caches"']
 
             subprocess.run(
-                cmdFlushRAM,
-                capture_output=True,
-                text=True,
-                timeout=5
+                cmdFlushRAM
             )
 
 class StatUtils:

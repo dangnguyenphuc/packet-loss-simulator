@@ -5,6 +5,7 @@ export const IP_ENDPOINT = (device) => `${DEVICE_ENDPOINT}/${device}/ip`;
 export const PROXY_ENDPOINT = '/api/proxy/shape';
 export const ANDROID_TASK_RUN_ENDPOINT = (device) => `${DEVICE_ENDPOINT}/${device}/run`;
 export const ANDROID_TASK_INSTALL_ENDPOINT = (device) => `${DEVICE_ENDPOINT}/${device}/install`;
+export const ANDROID_TASK_MOVE_ENDPOINT = (device) => `${DEVICE_ENDPOINT}/${device}/move`;
 export const ANDROID_TASK_DETAIL_ENDPOINT = (task_id) => `/api/tasks/${task_id}`;
 export const STORE_FOLDER_ENDPOINT = (folder) => `/api/files/${folder}`;
 

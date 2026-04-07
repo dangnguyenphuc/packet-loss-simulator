@@ -6,6 +6,8 @@ package-lock.json
 static/*
 frontend/loss-simulator/*.vscode*
 frontend/loss-simulator/public/audio/*
+PLCMOS/audio/*
+PLCMOS/dred/*
 */.env
 lossSimulator/zrtc/*.*
 lossSimulator/zrtc

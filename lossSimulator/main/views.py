@@ -114,8 +114,14 @@ class TaskRunView(View):
                 return self.install(device_id)
             case "run":
                 return self.run(request, device_id)
+            case "move":
+                return self.move()
             case _: return self.INVALID_TYPE_PAYLOAD
     
+    def move(self):
+        staticFolder = FileUtils.getAbsPath(str(settings.BASE_DIR) + "/" + DESKTOP_STATIC_FOLDER)
+        FileUtils.moveFiles(staticFolder, "/home/dangnp/workspace/tmp/audio")
+        return JsonResponse(status=200)
 
     def install(self, device_id):
         

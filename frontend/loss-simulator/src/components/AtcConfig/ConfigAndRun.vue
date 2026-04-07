@@ -149,11 +149,12 @@ import {
   EVAL_NETWORK_TYPE,
   EVAL_DEC_COMPLEX,
   EVAL_DRED,
-  MAX_CONFIG_SIZE
+  MAX_CONFIG_SIZE,
+  EVAL_RTT
 } from "../../constants/constant"
 import AtcConfig from "./AtcConfig.vue";
 import Result from "./Result.vue";
-import { applyConfig, deleteShape, runApp, getAppRes, stopApp, removeFolder } from "../../utils/specific";
+import { applyConfig, deleteShape, runApp, getAppRes, stopApp, removeFolder, moveAudios } from "../../utils/specific";
 import { DEFAULT_REQUEST_TIMEOUT } from "../../constants/api";
 
 export default {
@@ -237,24 +238,25 @@ export default {
         const curComplex = EVAL_COMPLEX[a];
         for (let b = 0; b < EVAL_DEC_COMPLEX.length; b+=1) {
           const curDecComplex = EVAL_DEC_COMPLEX[b];
-          if (curComplex <= 7 && curDecComplex <= 6) continue;
           for (let c = 0; c < EVAL_DRED.length; c+=1) {
             const curDredDur = EVAL_DRED[c];
             for (let d = 0; d < EVAL_NETWORK_TYPE.length; d+=1) {
               const curNetwork = EVAL_NETWORK_TYPE[d];
               const networkType = curNetwork.name;
               let networkData = curNetwork.data;
-              for (let e = 0; e < EVAL_LOSS_PERCENTAGE.length; e+=1) {
-                const curLoss = EVAL_LOSS_PERCENTAGE[e];
+              for(let f = 0; f < EVAL_RTT.length; f+=1){
                 try {
                   let json = JSON.parse(networkData);
-                  json.down.loss.percentage = curLoss;
-                  networkData = JSON.stringify(json);
+                  json.down.delay.delay = EVAL_RTT[f];
+                  for (let e = 0; e < EVAL_LOSS_PERCENTAGE.length; e+=1) {
+                      json.down.loss.percentage = EVAL_LOSS_PERCENTAGE[e];
+                      networkData = JSON.stringify(json);
+                      if (this.configs.length < MAX_CONFIG_SIZE)
+                        this.configs.push(this.createTestWithParamsDred(a*b*c*d+e, curComplex, curDecComplex, curDredDur, networkType, networkData));
+                      else
+                        this.configsBuffer.push(this.createTestWithParamsDred(a*b*c*d+e, curComplex, curDecComplex, curDredDur, networkType, networkData));
+                  }
                 } catch {}
-                if (this.configs.length < MAX_CONFIG_SIZE)
-                  this.configs.push(this.createTestWithParamsDred(a*b*c*d+e, curComplex, curDecComplex, curDredDur, networkType, networkData));
-                else
-                  this.configsBuffer.push(this.createTestWithParamsDred(a*b*c*d+e, curComplex, curDecComplex, curDredDur, networkType, networkData));
               }
             }
           }
@@ -359,6 +361,9 @@ export default {
         if (i == MAX_CONFIG_SIZE * (factor+1)) {
           this.configs = [];
           this.configs = this.configsBuffer.splice(0, MAX_CONFIG_SIZE);
+          try {
+            await moveAudios(this.deviceId);
+          } catch {}
           factor += 1;
         }
         const idx = i - MAX_CONFIG_SIZE*factor;
@@ -423,8 +428,10 @@ export default {
         try {
           let data = JSON.parse(jsonData);
           atcConfigName += `_loss-${data.down.loss.percentage}`;
+          atcConfigName += `_rtt-${data.down.delay.delay}`;
         } catch {
           atcConfigName += "loss-0";
+          atcConfigName += "_rtt-0";
         }
         const { h, m, s } = timer;
         let delay = (h * 3600 + m * 60 + s) * 1000;

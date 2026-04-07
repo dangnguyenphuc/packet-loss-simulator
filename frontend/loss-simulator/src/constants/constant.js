@@ -14,7 +14,6 @@ export const BENCHMARK_DURATION = 2*60*1000;
 export const MAX_CONFIG_SIZE = 50;
 
 export const EVAL_COMPLEX = [
-
 	6,
 	7,
 	8,
@@ -44,6 +43,15 @@ export const EVAL_NETWORK_TYPE = [
 	}
 
 ]
+
+export const EVAL_RTT = [ 
+	200, 
+	500,
+	700, 
+	950,
+	1200, 
+]
+
 export const EVAL_LOSS_PERCENTAGE = [
 	0, 
 	10, 
@@ -65,11 +73,11 @@ export const EVAL_NORMAL_AND_PLC = [
 ]
 export const EVAL_DRED = [
 	0, 
-	20, 
-	40, 
-	60, 
-	80, 
-	90
+	30, 
+	50, 
+	70, 
+	85, 
+	100
 ]
 
 /*
