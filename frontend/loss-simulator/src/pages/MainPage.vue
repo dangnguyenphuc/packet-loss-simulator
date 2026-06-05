@@ -1,195 +1,148 @@
 <template>
-    <v-container class="main-container">
-        <v-row justify="center">
-            <v-col>
-                <h1>Hello, {{ username }}!</h1>
-            </v-col>
-        </v-row>
-        <v-expansion-panels v-model="expanded" multiple>
-            <v-expansion-panel
-                v-for="panel in panels"
-                :key="panel.key"
-                :value="panel.value"
-                :class="panel.class"
-            >
-                <div v-if="panel.key < 10 || (selectedDevice && selectedIp)">
-                    <v-expansion-panel-title>
-                        <span class="title">{{ panel.title }}</span>
-                    </v-expansion-panel-title>
-                    <v-expansion-panel-text eager>
-                        <component
-                            :is="panel.component"
-                            @open:Toast="openToast"
-                            v-bind="panel.props"
-                            v-on="panel.events"
-                        />
-                    </v-expansion-panel-text>
-                </div>
-            </v-expansion-panel>
-        </v-expansion-panels>
-    </v-container>
+  <v-container class="main-container">
+    <v-row justify="center">
+      <v-col>
+        <h1>Hello, {{ username }}!</h1>
+      </v-col>
+    </v-row>
+    <v-expansion-panels v-model="expanded" multiple>
+      <v-expansion-panel
+        v-for="panel in panels"
+        :key="panel.key"
+        :value="panel.value"
+        :class="panel.class"
+      >
+        <div v-if="panel.alwaysShow || (selectedDevice && selectedIp)">
+          <v-expansion-panel-title>
+            <span class="title">{{ panel.title }}</span>
+          </v-expansion-panel-title>
+          <v-expansion-panel-text eager>
+            <component
+              :is="panel.component"
+              @open:Toast="openToast"
+              v-bind="panel.props"
+              v-on="panel.events"
+            />
+          </v-expansion-panel-text>
+        </div>
+      </v-expansion-panel>
+    </v-expansion-panels>
+  </v-container>
 </template>
 
-<script>
-import DeviceSelector from '../components/DeviceSelector.vue';
-import Guidance from '../components/Guidance.vue';
-import TestInfo from '../components/TestInfo.vue';
-import ConfigAndRun from '../components/AtcConfig/ConfigAndRun.vue';
+<script setup>
+import { ref, reactive } from 'vue'
+import DeviceSelector from '../components/DeviceSelector.vue'
+import Guidance from '../components/Guidance.vue'
+import TestInfo from '../components/TestInfo.vue'
+import ConfigAndRun from '../components/AtcConfig/ConfigAndRun.vue'
 import {
-    GUIDE_TEXT, 
-    EVENT_OPEN_TOAST, 
-    TOAST_TIMEOUT,
-    EVENT_UPDATE_DEVICE,
-    EVENT_UPDATE_DEVICE_IP,
-    EVENT_FETCH_DEVICE
-} from '../constants/constant';
-import { fetchJsons, fetchUser } from '../utils/specific';
-import Monitor from '../components/Graph/Monitor.vue';
+  GUIDE_TEXT, EVENT_OPEN_TOAST, TOAST_TIMEOUT,
+  EVENT_UPDATE_DEVICE, EVENT_UPDATE_DEVICE_IP, EVENT_FETCH_DEVICE,
+} from '../constants/constant'
+import { fetchJsons, fetchUser } from '../utils/specific'
 
-export default {
-    name: 'MainPage',
-    components: { DeviceSelector, Guidance, TestInfo, ConfigAndRun, Monitor },
-    data() {
-        return {
-            username: '', // just make fun
-            selectedDevice: '',
-            selectedIp: '',
-            expanded: [0,1],
-            panels: [
-                // FIRST PANEL
-                {
-                    title: 'How to use',
-                    value: 0,
-                    key: 0,
-                    class: 'intro',
-                    component: 'Guidance',
-                    props: {
-                        content: GUIDE_TEXT,
-                        deviceId: "",
-                    },
-                    events: {},
-                },
-                // SECOND PANEL
-                {
-                    title: 'Device Selector',
-                    value: 1,
-                    key: 1,
-                    class: 'device-selector',
-                    component: 'DeviceSelector',
-                    props: {},
-                    events: {
-                        [EVENT_UPDATE_DEVICE]: this.handleFetchDevice,
-                        [EVENT_UPDATE_DEVICE_IP]: this.handleFetchDeviceIp,
-                        [EVENT_FETCH_DEVICE]: this.handleCompletedFetchDevice
-                    },
-                },
-                // 3RD PANEL
-                {
-                    title: 'Auto test information',
-                    value: 2,
-                    key: 2,
-                    class: 'test-info',
-                    component: 'TestInfo',
-                    props: {
-                        deviceId: '',
-                    },
-                    events: {},
-                },
-                // 4TH PANEL
-                {
-                    title: 'Config ATC and Run Tests',
-                    value: 3,
-                    key: 3,
-                    class: 'config-container',
-                    component: 'ConfigAndRun',
-                    props: {
-                        atcConfigs: [],
-                        deviceId: "",
-                        deviceIp: ""
-                    },
-                    events: {},
-                },
+const emit = defineEmits([EVENT_OPEN_TOAST])
 
-                // // Debug
-                // {
-                //     title: 'Stat Monitor',
-                //     value: 4,
-                //     key: 4,
-                //     class: 'config-container',
-                //     component: 'Monitor',
-                //     props: {
-                //         deviceId: ""
-                //     },
-                //     events: {},
-                // }
-            ],
-        };
+const username       = ref('')
+const selectedDevice = ref('')
+const selectedIp     = ref('')
+const expanded       = ref([0, 1])
+
+const panels = reactive([
+  {
+    key: 0, value: 0, alwaysShow: true,
+    title: 'How to use', class: 'intro',
+    component: Guidance,
+    props: { content: GUIDE_TEXT, deviceId: '' },
+    events: {},
+  },
+  {
+    key: 1, value: 1, alwaysShow: true,
+    title: 'Device Selector', class: 'device-selector',
+    component: DeviceSelector,
+    props: {},
+    events: {
+      [EVENT_UPDATE_DEVICE]:    handleDeviceUpdate,
+      [EVENT_UPDATE_DEVICE_IP]: handleDeviceIpUpdate,
+      [EVENT_FETCH_DEVICE]:     handleDeviceFetched,
     },
-    methods: {
-        async getUsername() {
-            try{
-                const result = await fetchUser();
-                this.username = result.username;
-            } catch {
-                this.username = "nobody";
-            }
+  },
+  {
+    key: 2, value: 2, alwaysShow: false,
+    title: 'Auto test information', class: 'test-info',
+    component: TestInfo,
+    props: { deviceId: '' },
+    events: {},
+  },
+  {
+    key: 3, value: 3, alwaysShow: false,
+    title: 'Config ATC and Run Tests', class: 'config-container',
+    component: ConfigAndRun,
+    props: { atcConfigs: [], deviceId: '', deviceIp: '' },
+    events: {},
+  },
+])
 
-        },
-        handleFetchDevice(value) {
-            this.selectedDevice = value;
-            this.panels[3].props.deviceId = value;
-        },
-        handleFetchDeviceIp(value) {
-            this.selectedIp = value;
-            this.panels[3].props.deviceIp = value;
-        },
-        async handleCompletedFetchDevice(value) {
-            
-            if(!value) return;
-            this.expanded = [0, 1, 2, 3];
-            // fetch defined ATC Configs
-            try {
-                const atcConfigSelections = await fetchJsons();
-                if (!atcConfigSelections.hasOwnProperty("files")) throw new Error("Response ATC Configs doesn't have \"files\" field")
-                this.panels[0].props.deviceId = this.selectedDevice;
-                this.panels[2].props.deviceId = this.selectedDevice;
-                this.panels[3].props.atcConfigs = atcConfigSelections.files;
-                // this.panels[4].props.deviceId = this.selectedDevice;
-            } catch (err) {
-                this.openToast("Error Getting ATC Configs file", err.message);
-            }
-        },
-        openToast(componentName = "", header = "", message = "", timeout = TOAST_TIMEOUT) {
-            switch(componentName) {
-                case "DeviceSelector":
-                    this.expanded = [1];
-                    this.panels[2].props.deviceId = "";
-                    this.selectedDevice = "";
-                    break;
-            }
-            this.$emit(EVENT_OPEN_TOAST, header, message, timeout);
-        },
-    },
-    created() {
-        this.getUsername();
-    }
-};
+async function loadUsername() {
+  try {
+    const result = await fetchUser()
+    username.value = result.username
+  } catch {
+    username.value = 'nobody'
+  }
+}
+
+function handleDeviceUpdate(value) {
+  selectedDevice.value    = value
+  panels[3].props.deviceId = value
+}
+
+function handleDeviceIpUpdate(value) {
+  selectedIp.value         = value
+  panels[3].props.deviceIp = value
+}
+
+async function handleDeviceFetched(value) {
+  if (!value) return
+  expanded.value = [0, 1, 2, 3]
+  try {
+    const res = await fetchJsons()
+    if (!Object.hasOwn(res, 'files')) throw new Error('Response missing "files" field')
+    panels[0].props.deviceId  = selectedDevice.value
+    panels[2].props.deviceId  = selectedDevice.value
+    panels[3].props.atcConfigs = res.files
+  } catch (err) {
+    openToast('Error Getting ATC Configs', err.message)
+  }
+}
+
+function openToast(componentName = '', header = '', message = '', timeout = TOAST_TIMEOUT) {
+  if (componentName === 'DeviceSelector') {
+    expanded.value = [1]
+    panels[2].props.deviceId = ''
+    selectedDevice.value = ''
+  }
+  emit(EVENT_OPEN_TOAST, header, message, timeout)
+}
+
+loadUsername()
 </script>
 
 <style scoped>
 .main-container {
-    width: 1200px;
+  width: 1200px;
 }
 
-@media (max-width: 767) {
-    .main-container {
-        width: 600px;
-    }
+@media (max-width: 767px) {
+  .main-container {
+    width: 600px;
+  }
 }
 
-@media (max-width: 566) {
-    .main-container {
-        width: 350px;
-    }
+@media (max-width: 566px) {
+  .main-container {
+    width: 350px;
+  }
 }
 </style>

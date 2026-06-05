@@ -1,131 +1,136 @@
 from .utils import AdbUtils, DateTimeUtils
-from .constants import *
-from django.conf import settings
+from .constants import (
+    APP_PACKAGE, ANDROID_DEMO_PATH, AUDIO_FILE, STATIC_FOLDER,
+    LOGIN_ACTIVITY, MAIN_ACTIVITY, DEFAULT_TIMEOUT,
+    CALL_BTN_ID, CALL_WITH_SELECTOR_ID, RECORD_CHECKBOX_ID,
+    STORING_RECORD_PATH_EDIT_TEXT_ID, PLAY_AUDIO_CHECKBOX_ID,
+    PLAY_AUDIO_FILE_EDIT_TEXT_ID, MAKE_AUDIO_CALL_BTN_ID,
+    CALL_MODE, CALL_OPTION,
+)
 import uiautomator2 as u2
 import time
 
-class AndroidAppController:
-    def __init__(self, deviceId=None, packageName = APP_PACKAGE, path = ANDROID_DEMO_PATH, callMode = CALL_MODE.AUDIO, callOption = CALL_OPTION.LOOPBACK_SERVER.value):
-        if deviceId:
-            self.d = u2.connect(deviceId)
-            self.serial = deviceId
-        else:
-            self.d = u2.connect()
-            self.serial = self.d.serial
-        
-        
-        self.packageName = packageName
-        self.defaultPath = AdbUtils.getDownloadsPath(self.d.serial) + "/" + path
-        self.timestamp = DateTimeUtils.getTimestamped()
-        self.storePath = self.defaultPath + "/" + self.timestamp
-        AdbUtils.removeFolder(self.defaultPath)
-        AdbUtils.createTmpDir(self.storePath, self.d.serial)
 
-        self.deviceAudioFile = self.defaultPath + "/" + AUDIO_FILE
-        AdbUtils.pushFile(STATIC_FOLDER + AUDIO_FILE, self.deviceAudioFile)
+class AndroidAppController:
+    def __init__(
+        self,
+        device_id: str = None,
+        package_name: str = APP_PACKAGE,
+        path: str = ANDROID_DEMO_PATH,
+        call_mode: str = CALL_MODE.AUDIO,
+        call_option: int = CALL_OPTION.LOOPBACK_SERVER.value,
+    ):
+        self.d = u2.connect(device_id) if device_id else u2.connect()
+        self.serial = device_id or self.d.serial
+        self.package_name = package_name
+
+        self.timestamp = DateTimeUtils.get_timestamped()
+        default_path = AdbUtils.get_downloads_path(self.d.serial) + "/" + path
+        self.store_path = default_path + "/" + self.timestamp
+
+        AdbUtils.remove_folder(default_path)
+        AdbUtils.create_tmp_dir(self.store_path, self.d.serial)
+
+        device_audio_file = default_path + "/" + AUDIO_FILE
+        AdbUtils.push_file(STATIC_FOLDER + AUDIO_FILE, device_audio_file)
         time.sleep(5)
 
-        self.stringExtras = {
-            "CALL_MODE": callMode,
-            "CALL_OPTION": callOption,
-            "RECORD_AUDIO_PATH": self.storePath,
-            "AUDIO_FILE_PATH": self.deviceAudioFile
+        self.string_extras = {
+            "CALL_MODE": call_mode,
+            "CALL_OPTION": call_option,
+            "RECORD_AUDIO_PATH": self.store_path,
+            "AUDIO_FILE_PATH": device_audio_file,
         }
-        self.intExtras = None
-        self.boolExtras = {
-            "ENABLE_OPUS_PLC": False
-        }
+        self.int_extras = None
+        self.bool_extras = {"ENABLE_OPUS_PLC": False}
 
-    def startApp(self, packageName = None):
-        if packageName:
-            self.d.app_start(packageName)
-        else:
-            self.d.app_start(self.packageName)
+    def start_app(self, package_name: str = None) -> None:
+        self.d.app_start(package_name or self.package_name)
 
-    def stopAll(self):
+    def stop_all(self) -> None:
         self.d.app_stop_all()
 
-    def stopApp(self, packageName = None):
+    def stop_app(self, package_name: str = None) -> None:
+        target = package_name or self.package_name
         try:
-            if packageName:
-                self.d.app_stop(packageName)
-            else:
-                self.d.app_stop(self.packageName)
+            self.d.app_stop(target)
+        except Exception:
+            print(f"[AndroidAppController] Cannot stop {target}")
 
-        except:
-            print(f"Cannot stop {packageName if packageName else self.packageName}")
+    def click_button(self, resource_id: str) -> None:
+        self.d(resourceId=resource_id).click()
 
-    def clickButton(self, resourceId):
-        self.d(resourceId=resourceId).click()
-
-    def setCheckbox(self, resourceId, checked=True):
-        checkbox = self.d(resourceId=resourceId)
+    def set_checkbox(self, resource_id: str, checked: bool = True) -> None:
+        checkbox = self.d(resourceId=resource_id)
         if not checkbox.exists:
-            raise Exception(f"Checkbox with resourceId {resourceId} not found")
-
-        currentState = checkbox.info.get("checked", False)
-        if currentState != checked:
+            raise ValueError(f"Checkbox not found: {resource_id}")
+        if checkbox.info.get("checked", False) != checked:
             checkbox.click()
 
-    def waitForActivity(self, resourceId, timeout = DEFAULT_TIMEOUT):
-        self.d.wait_activity(resourceId, timeout=timeout)
-        if self.d.app_current().get('activity') == resourceId: 
+    def wait_for_activity(self, resource_id: str, timeout: int = DEFAULT_TIMEOUT) -> bool:
+        self.d.wait_activity(resource_id, timeout=timeout)
+        if self.d.app_current().get("activity") == resource_id:
             return True
-        else:
-            print(f"Cannot get into {resourceId} template!!")
-            return False
-    
-    def sleep(self, timeout = DEFAULT_TIMEOUT):
+        print(f"[AndroidAppController] Cannot navigate to {resource_id}")
+        return False
+
+    def sleep(self, timeout: int = DEFAULT_TIMEOUT) -> None:
         self.d.sleep(timeout)
 
-    def setEditTextValue(self, resourceId, value):
-        try:
-            field = self.d(resourceId=resourceId)
-            if not field.exists:
-                raise Exception(f"[ERROR] EditText {resourceId} not found")
-            field.clear_text()
-            field.set_text(str(value))
-            self.press("back")
-        except Exception as e:
-            raise e
-    
-    def selectSpinnerItem(self, spinnerResourceId, itemText, timeout = DEFAULT_TIMEOUT):
-        try:
-            spinner = self.d(resourceId=spinnerResourceId)
-            if not spinner.exists:
-                raise Exception(f"[ERROR] Spinner {spinnerResourceId} not found")
+    def set_edit_text_value(self, resource_id: str, value) -> None:
+        field = self.d(resourceId=resource_id)
+        if not field.exists:
+            raise ValueError(f"EditText not found: {resource_id}")
+        field.clear_text()
+        field.set_text(str(value))
+        self.press("back")
 
-            spinner.click()
-            
-            item = self.d(text=itemText)
-            if not item.wait(timeout=timeout):
-                raise Exception(f"[ERROR] Spinner item '{itemText}' not found")
+    def select_spinner_item(self, spinner_resource_id: str, item_text: str, timeout: int = DEFAULT_TIMEOUT) -> None:
+        spinner = self.d(resourceId=spinner_resource_id)
+        if not spinner.exists:
+            raise ValueError(f"Spinner not found: {spinner_resource_id}")
+        spinner.click()
+        item = self.d(text=item_text)
+        if not item.wait(timeout=timeout):
+            raise ValueError(f"Spinner item '{item_text}' not found")
+        item.click()
 
-            item.click()
-        except Exception as e:
-            raise e
-        
-    def selectFolder(self, timeout = DEFAULT_TIMEOUT):
-            confirmBtn = self.d(textMatches="(?i)(use this folder|select|select folder|open|open folder|choose|choose folder|ok|confirm|save here|sử dụng thư mục này|chọn|chọn thư mục|mở|mở thư mục|đồng ý|xác nhận|lưu tại đây)")
-            if confirmBtn.wait(timeout=timeout):
-                confirmBtn.click()
+    def select_folder(self, timeout: int = DEFAULT_TIMEOUT) -> None:
+        confirm_btn = self.d(textMatches=(
+            r"(?i)(use this folder|select|select folder|open|open folder|"
+            r"choose|choose folder|ok|confirm|save here|"
+            r"sử dụng thư mục này|chọn|chọn thư mục|mở|mở thư mục|đồng ý|xác nhận|lưu tại đây)"
+        ))
+        if confirm_btn.wait(timeout=timeout):
+            confirm_btn.click()
 
-            acceptBtn = self.d(textMatches="(?i)(accept|allow|grant|yes|cho phép|cấp quyền|đồng ý)")
-            if acceptBtn.wait(timeout=timeout):
-                acceptBtn.click()
+        accept_btn = self.d(textMatches=r"(?i)(accept|allow|grant|yes|cho phép|cấp quyền|đồng ý)")
+        if accept_btn.wait(timeout=timeout):
+            accept_btn.click()
 
-    def press(self, cmd):
+    def press(self, cmd: str) -> None:
         self.d.press(cmd)
 
-    def startActivity(self, activity, stringExtras=None, intExtras=None, boolExtras=None):
-        if stringExtras or intExtras or boolExtras:
-            AdbUtils.startActivityWithExtras(self.packageName, activity, self.serial, stringExtras, intExtras, boolExtras)
-        else:
-            AdbUtils.startActivityWithExtras(self.packageName, activity, self.serial, self.stringExtras, self.intExtras, self.boolExtras)
+    def start_activity(
+        self,
+        activity: str,
+        string_extras: dict = None,
+        int_extras: dict = None,
+        bool_extras: dict = None,
+    ) -> None:
+        AdbUtils.start_activity_with_extras(
+            self.package_name,
+            activity,
+            self.serial,
+            string_extras or self.string_extras,
+            int_extras or self.int_extras,
+            bool_extras or self.bool_extras,
+        )
 
-    def startEval(self, startEvent = None, activity=[LOGIN_ACTIVITY, MAIN_ACTIVITY]):
-        self.startActivity(activity[0])
-        self.waitForActivity(activity[1])
-        if startEvent:
-            startEvent.set()
-
+    def start_eval(self, start_event=None, activity: list = None) -> None:
+        if activity is None:
+            activity = [LOGIN_ACTIVITY, MAIN_ACTIVITY]
+        self.start_activity(activity[0])
+        self.wait_for_activity(activity[1])
+        if start_event:
+            start_event.set()

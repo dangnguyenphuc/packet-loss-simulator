@@ -1,7 +1,7 @@
 import { axiosGet, axiosPost, axiosDelete } from './common.js';
-import { 
-    DEVICE_ENDPOINT, 
-    PROXY_ENDPOINT, 
+import {
+    DEVICE_ENDPOINT,
+    PROXY_ENDPOINT,
     IP_ENDPOINT,
     JSON_ENDPOINT,
     ANDROID_TASK_RUN_ENDPOINT,
@@ -38,7 +38,7 @@ export async function fetchDeviceIp(device) {
 
 export async function fetchJsons() {
     try {
-        return await axiosGet(`${JSON_ENDPOINT}`);
+        return await axiosGet(JSON_ENDPOINT);
     } catch (err) {
         throw new Error(`[GET] Failed to fetch JSON files: ${err.message}`);
     }
@@ -54,11 +54,9 @@ export async function fetchJsonContent(filename) {
 
 export async function fetchInfo(deviceId) {
     try {
-        return await axiosGet(`/api/info`, {
-            deviceId: deviceId
-        });
+        return await axiosGet('/api/info', { deviceId });
     } catch (err) {
-        throw new Error(`[GET] Failed to fetch audio: ${err.message}`);
+        throw new Error(`[GET] Failed to fetch device info: ${err.message}`);
     }
 }
 
@@ -78,7 +76,7 @@ export async function postShape(payload = {}, endpoint = PROXY_ENDPOINT) {
     }
 }
 
-export async function getShape(endpoint = PROXY_ENDPOINT, ip = "") {
+export async function getShape(endpoint = PROXY_ENDPOINT, ip = '') {
     try {
         const url = ip ? `${endpoint}?ip=${ip}` : endpoint;
         return await axiosGet(url);
@@ -90,25 +88,13 @@ export async function getShape(endpoint = PROXY_ENDPOINT, ip = "") {
 export async function applyConfig(payload = {}, endpoint = PROXY_ENDPOINT) {
     try {
         await deleteShape(payload, endpoint);
-    } finally {
-        try {
-            return await postShape(payload, endpoint);
-        } catch (err) {
-            throw new Error("[POST] Cannot post shape");
-        }
+    } catch {
+        // best-effort delete; proceed regardless
     }
+    return postShape(payload, endpoint);
 }
 
-export async function getApp(device, payload = {}, timeout=60000) {
-    try {
-        return await axiosGet(ANDROID_TASK_RUN_ENDPOINT(device), payload, timeout);
-    } catch (err) {
-        throw new Error(`[GET] ${ANDROID_TASK_RUN_ENDPOINT(device)} failed: ${err.message}`);
-    }
-}
-
-
-export async function runApp(device, payload = {}, timeout=60000) {
+export async function runApp(device, payload = {}, timeout = 60000) {
     try {
         return await axiosPost(ANDROID_TASK_RUN_ENDPOINT(device), payload, timeout);
     } catch (err) {
@@ -116,7 +102,7 @@ export async function runApp(device, payload = {}, timeout=60000) {
     }
 }
 
-export async function installApp(device, payload = {}, timeout=60000) {
+export async function installApp(device, payload = {}, timeout = 60000) {
     try {
         return await axiosPost(ANDROID_TASK_INSTALL_ENDPOINT(device), payload, timeout);
     } catch (err) {
@@ -124,7 +110,7 @@ export async function installApp(device, payload = {}, timeout=60000) {
     }
 }
 
-export async function moveAudios(device, payload = {}, timeout=60000) {
+export async function moveAudios(device, payload = {}, timeout = 60000) {
     try {
         return await axiosPost(ANDROID_TASK_MOVE_ENDPOINT(device), payload, timeout);
     } catch (err) {
@@ -156,18 +142,10 @@ export async function removeFolder(folderName) {
     }
 }
 
-export async function isValidAudioFolder(folderName) {
-    try {
-        return await axiosGet(STORE_FOLDER_ENDPOINT(folderName));
-    } catch (err) {
-        throw new Error(`[DELETE] ${STORE_FOLDER_ENDPOINT(folderName)} failed: ${err.message}`);
-    }
-}
-
-export async function getStat(payload, endpoint) {
+export async function getStat(payload, endpoint = '/api/stats') {
     try {
         return await axiosGet(endpoint, payload);
     } catch (err) {
-        throw new Error(`[DELETE] ${endpoint} failed: ${err.message}`);
+        throw new Error(`[GET] ${endpoint} failed: ${err.message}`);
     }
 }

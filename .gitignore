@@ -8,7 +8,13 @@ frontend/loss-simulator/*.vscode*
 frontend/loss-simulator/public/audio/*
 PLCMOS/audio/*
 PLCMOS/dred/*
-*/.env
+.env
+.env.*
+*.env
+**/.env
+**/local_settings.py
+**/settings_local.py
 lossSimulator/zrtc/*.*
 lossSimulator/zrtc
 lossSimulator/config.env
+NISQA/flask/*

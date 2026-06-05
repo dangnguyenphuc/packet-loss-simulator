@@ -1,331 +1,273 @@
-from django.http import HttpResponse, HttpRequest, JsonResponse
+from django.http import HttpRequest, JsonResponse
 import ipaddress
 import os
 import json
 from json.decoder import JSONDecodeError
 import requests
-from .constants import *
+from .constants import (
+    NETWORK_ATC_GATEWAY_IP, NETWORK_ATC_ENDPOINT, NETWORK_ATC_SUBMASK_NET,
+    NETWORK_ATC_MAX_RETRY, STATIC_FOLDER, JSON_CONFIG_FOLDER,
+    AUDIO_TYPE, LOG_TYPE, DEFAULT_RETRY, DEFAULT_AUDIO_DURATION,
+    DEFAULT_AUDIO_DURATION_OFFSET, APP_PACKAGE, PACKAGE_DOMAIN,
+    ANDROID_ARCH,
+)
 import shutil
 import subprocess
 from datetime import datetime, timezone, timedelta
 import wave
-from django.conf import settings 
+from django.conf import settings
 import time
 from .plc_mos import PLCMOSEstimator
 import soundfile as sf
 import re
-import sys
-from django.conf import settings
 
 plcmos = PLCMOSEstimator()
 
+
 class DateTimeUtils:
     @staticmethod
-    def getTimestamped():
+    def get_timestamped() -> str:
         tz = timezone(timedelta(hours=7))
         return datetime.now(tz).strftime("%d-%m-%Y_%H%M%S")
+
+
 class AudioUtils:
     @staticmethod
-    def isValidAudioFile(filePath: str, timeout = DEFAULT_AUDIO_DURATION) -> bool:
+    def is_valid_audio_file(file_path: str, timeout: float = DEFAULT_AUDIO_DURATION) -> bool:
         try:
-            data, sr = sf.read(filePath)
+            data, sr = sf.read(file_path)
             plcmos.run(data, sr)
-            return AudioUtils.getAudioDuration(filePath) >= timeout - DEFAULT_AUDIO_DURATION_OFFSET
-        except:
+            return AudioUtils.get_audio_duration(file_path) >= timeout - DEFAULT_AUDIO_DURATION_OFFSET
+        except Exception:
             return False
 
     @staticmethod
-    def getAudioDuration(filePath: str) -> float:
-        with sf.SoundFile(filePath) as f:
-            frames = len(f)
-            rate = f.samplerate
-            duration = frames / float(rate)
+    def get_audio_duration(file_path: str) -> float:
+        with sf.SoundFile(file_path) as f:
+            duration = len(f) / float(f.samplerate)
         return round(duration, 2)
 
     @staticmethod
-    def getAudioFileWithDurations() -> list[str]:
-        audioFiles = FileUtils.getAudioFiles();
-        return [ f"{file}-{AudioUtils.getAudioDuration(file)}" for file in audioFiles]
+    def get_audio_file_with_durations() -> list[str]:
+        audio_files = FileUtils.get_audio_files()
+        return [f"{file}-{AudioUtils.get_audio_duration(file)}" for file in audio_files]
+
+
 class NetworkUtils:
-    def getIp(request: HttpRequest) -> str:
-        x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+    @staticmethod
+    def get_ip(request: HttpRequest) -> str:
+        x_forwarded_for = request.META.get("HTTP_X_FORWARDED_FOR")
         if x_forwarded_for:
-            ip = x_forwarded_for.split(',')[0]
-        else:
-            ip = request.META.get('REMOTE_ADDR')
+            return x_forwarded_for.split(",")[0]
+        return request.META.get("REMOTE_ADDR", "")
 
-        return ip
-
-    def checkValidIPv4(ip: str, subnet: str = NETWORK_ATC_SUBMASK_NET) -> bool:
+    @staticmethod
+    def check_valid_ipv4(ip: str, subnet: str = NETWORK_ATC_SUBMASK_NET) -> bool:
         return ipaddress.ip_address(ip) in ipaddress.ip_network(subnet)
 
     @staticmethod
-    def getIpString(request: HttpRequest) -> str:
-        ip = NetworkUtils.getIp(request)
-        return (ip if NetworkUtils.checkValidIPv4(ip) else "Stranger")
-    
-    # @staticmethod
-    # def scanNetwork(subnet=NETWORK_ATC_SUBMASK_NET):
-    #     nm = nmap.PortScanner()
-    #     nm.scan(hosts=subnet, arguments="-sn -n -T4 --host-timeout 1s")
-    #     return [host for host in nm.all_hosts() if nm[host].state() == "up"]
+    def get_ip_string(request: HttpRequest) -> str:
+        ip = NetworkUtils.get_ip(request)
+        return ip if NetworkUtils.check_valid_ipv4(ip) else "Stranger"
 
-class FileUtils:
+
+class AtcClient:
+    """Thin HTTP client for the ATC daemon API."""
 
     @staticmethod
-    def getUsername():
+    def _build_endpoint(ip: str) -> str:
+        return f"{NETWORK_ATC_GATEWAY_IP}{NETWORK_ATC_ENDPOINT}{ip}/"
+
+    @staticmethod
+    def get_shape(ip: str) -> JsonResponse:
+        endpoint = AtcClient._build_endpoint(ip)
+        try:
+            response = requests.get(endpoint)
+            data = [{"ip": ip, "active": response.status_code // 200 == 1}]
+        except Exception:
+            data = [{"ip": ip, "active": False}]
+        return JsonResponse({"data": data})
+
+    @staticmethod
+    def post_shape(ip: str, shape_data: dict) -> JsonResponse:
+        endpoint = AtcClient._build_endpoint(ip)
+        status_code = 0
+        retries_left = NETWORK_ATC_MAX_RETRY
+        try:
+            while status_code // 200 != 1 and retries_left > 0:
+                response = requests.post(
+                    endpoint,
+                    headers={"Content-Type": "application/json"},
+                    json=shape_data,
+                )
+                status_code = response.status_code
+                retries_left -= 1
+            return JsonResponse({"status": status_code, "data": ""}, status=status_code)
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=500)
+
+    @staticmethod
+    def delete_shape(ip: str) -> JsonResponse:
+        endpoint = AtcClient._build_endpoint(ip)
+        try:
+            response = requests.delete(endpoint)
+            return JsonResponse({"status": response.status_code, "data": ""}, status=response.status_code)
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=500)
+
+    @staticmethod
+    def handle_request(request: HttpRequest) -> JsonResponse:
+        """Route an incoming HTTP request to the appropriate ATC API call."""
+        if request.method == "GET":
+            ip = request.GET.get("ip", "")
+            if not ip:
+                return JsonResponse({"error": "Missing 'ip' query parameter"}, status=400)
+            return AtcClient.get_shape(ip)
+
+        try:
+            body = json.loads(request.body.decode("utf-8"))
+        except (UnicodeDecodeError, JSONDecodeError) as e:
+            return JsonResponse({"error": "Invalid JSON payload", "details": str(e)}, status=400)
+
+        ip = body.get("ip")
+        if not ip:
+            return JsonResponse({"error": "Missing 'ip' field"}, status=400)
+
+        if request.method == "POST":
+            shape_data = body.get("data")
+            if shape_data is None:
+                return JsonResponse({"error": "Missing 'data' field"}, status=400)
+            return AtcClient.post_shape(ip, shape_data)
+
+        if request.method == "DELETE":
+            return AtcClient.delete_shape(ip)
+
+        return JsonResponse({"error": "Method not allowed"}, status=405)
+
+
+# Keep backward-compatible alias
+class RequestUtils:
+    @staticmethod
+    def atcRequest(request: HttpRequest) -> JsonResponse:  # noqa: N802 (legacy name)
+        return AtcClient.handle_request(request)
+
+
+class FileUtils:
+    @staticmethod
+    def get_username() -> str:
         return os.getlogin()
 
     @staticmethod
-    def writeStat(path, type, num):
-        if path[-1] == "/": path = path[:-1]
-        with open(path + "/" + f"{type}.txt", "a") as f:
+    def write_stat(path: str, stat_type: str, num: float) -> None:
+        path = path.rstrip("/")
+        with open(f"{path}/{stat_type}.txt", "a") as f:
             f.write(f"{num}\n")
 
     @staticmethod
-    def removeFolder(folder):
+    def remove_folder(folder: str) -> None:
         shutil.rmtree(folder, ignore_errors=True)
 
     @staticmethod
-    def removeStoringFolder(folder):
-        folder = FileUtils.getAbsPath(str(settings.BASE_DIR) + "/" + DESKTOP_STATIC_FOLDER) + "/" + folder
-        shutil.rmtree(folder, ignore_errors=True)
+    def remove_storing_folder(folder: str) -> None:
+        from utils.constants import DESKTOP_STATIC_FOLDER
+        base = FileUtils.get_abs_path(str(settings.BASE_DIR) + "/" + DESKTOP_STATIC_FOLDER)
+        shutil.rmtree(os.path.join(base, folder), ignore_errors=True)
 
     @staticmethod
-    def removeStatFile(type, path):
-        # Construct absolute file path
-        filePath = os.path.join(
-            path,
-            f"{type}.txt"
-        )
-        # Safely remove the file if it exists
-        if os.path.isfile(filePath):
-            os.remove(filePath)
+    def remove_stat_file(stat_type: str, path: str) -> None:
+        file_path = os.path.join(path, f"{stat_type}.txt")
+        if os.path.isfile(file_path):
+            os.remove(file_path)
 
     @staticmethod
-    def moveFiles(src, dest):
+    def move_files(src: str, dest: str) -> None:
         for filename in os.listdir(src):
-            src_path = os.path.join(src, filename)
-            dst_path = os.path.join(dest, filename)
             try:
-                shutil.move(src_path, dst_path)
+                shutil.move(os.path.join(src, filename), os.path.join(dest, filename))
             except Exception:
-                # ignore any errors (e.g. if file disappears)
                 pass
-    
-    def openJsonFile(filePath: str) -> str:
+
+    @staticmethod
+    def open_json_file(file_path: str):
         try:
-            with open(filePath) as f:
-                data = json.load(f)
-                return data
-        except json.JSONDecodeError as e:
-            print("Invalid JSON format:", e)
-        except FileNotFoundError:
-            print("File not found")
-        except Exception as e:
-            print("Unexpected error:", e)
-
-        return ""
+            with open(file_path) as f:
+                return json.load(f)
+        except (json.JSONDecodeError, FileNotFoundError, Exception) as e:
+            print(f"[FileUtils.open_json_file] {e}")
+            return ""
 
     @staticmethod
-    def getAbsPath(filePath: str) -> str:
-        return os.path.abspath(filePath)
-    
-    @staticmethod
-    def makeDir(folderPath: str):
-        return os.makedirs(folderPath, exist_ok=True)
+    def get_abs_path(file_path: str) -> str:
+        return os.path.abspath(file_path)
 
     @staticmethod
-    def saveJsonFile(data, filePath: str, folderPath: str = JSON_CONFIG_FOLDER) -> bool:
+    def make_dir(folder_path: str) -> None:
+        os.makedirs(folder_path, exist_ok=True)
+
+    @staticmethod
+    def save_json_file(data, file_path: str, folder_path: str = JSON_CONFIG_FOLDER) -> bool:
         try:
-            with open(os.path.join(folderPath, filePath), "w") as f:
+            with open(os.path.join(folder_path, file_path), "w") as f:
                 json.dump(data, f, indent=4)
-                return True
-        except json.JSONDecodeError as e:
-            print("Invalid JSON format:", e)
-        except FileNotFoundError:
-            print("File not found")
+            return True
         except Exception as e:
-            print("Unexpected error:", e)
+            print(f"[FileUtils.save_json_file] {e}")
+            return False
 
-        return False
-    
-    def listFile(folderPath, type="*"):
-        if type == "*":
-            return [os.path.abspath(os.path.join(folderPath, f)) for f in os.listdir(folderPath)]
-        else:
-            return [
-                os.path.abspath(os.path.join(folderPath, f))
-                for f in os.listdir(folderPath)
-                if f.endswith(type)
-            ]
-    
     @staticmethod
-    def copyFile(src: str, dst: str) -> bool:
+    def list_file(folder_path: str, file_type: str = "*") -> list[str]:
+        if file_type == "*":
+            return [os.path.abspath(os.path.join(folder_path, f)) for f in os.listdir(folder_path)]
+        return [
+            os.path.abspath(os.path.join(folder_path, f))
+            for f in os.listdir(folder_path)
+            if f.endswith(file_type)
+        ]
+
+    @staticmethod
+    def copy_file(src: str, dst: str) -> bool:
         try:
             shutil.copy2(src, dst)
             return True
         except Exception as e:
-            print(f"Failed to copy {src} -> {dst}: {e}")
+            print(f"[FileUtils.copy_file] Failed to copy {src} -> {dst}: {e}")
             return False
 
     @staticmethod
-    def listAllJsonFiles(folderPath: str = JSON_CONFIG_FOLDER) -> list[str]:
-        res = FileUtils.listFile(folderPath, type="json")
+    def list_all_json_files(folder_path: str = JSON_CONFIG_FOLDER) -> list[str]:
+        res = FileUtils.list_file(folder_path, file_type="json")
         res.sort()
         return res
 
     @staticmethod
-    def getJsonContent(filename: str, folderPath: str = JSON_CONFIG_FOLDER) -> str:
-        return FileUtils.openJsonFile(os.path.join(folderPath, filename))
-    
+    def get_json_content(filename: str, folder_path: str = JSON_CONFIG_FOLDER):
+        return FileUtils.open_json_file(os.path.join(folder_path, filename))
+
     @staticmethod
-    def getAtcInfo() -> dict:
-        return {
-            "ip": NETWORK_ATC_GATEWAY_IP,
-            "endpoint": NETWORK_ATC_ENDPOINT
-        }
-    
+    def get_audio_files(audio_path: str = STATIC_FOLDER) -> list[str]:
+        return [os.path.abspath(p) for p in FileUtils.list_file(audio_path, AUDIO_TYPE)]
+
     @staticmethod
-    def getAudioFiles(audioPath=STATIC_FOLDER) -> list[str]:
-        paths = FileUtils.listFile(audioPath, AUDIO_TYPE)
-        return [os.path.abspath(path) for path in paths]
-    
-    @staticmethod
-    def getLogFiles(logPath=STATIC_FOLDER) -> list[str]:
-        paths = FileUtils.listFile(logPath, LOG_TYPE)
-        return [os.path.abspath(path) for path in paths]
-        
-    
-class RequestUtils:
-    @staticmethod
-    def atcRequest(request: HttpRequest) -> JsonResponse:
+    def get_log_files(log_path: str = STATIC_FOLDER) -> list[str]:
+        return [os.path.abspath(p) for p in FileUtils.list_file(log_path, LOG_TYPE)]
 
-        if request.method == "GET":
-            ip = request.GET.get("ip", "")
-            data = []
-            if ip == "":
-                for ipLoop in NetworkUtils.scanNetwork():
-                    tmp = {}
-                    endpoint = NETWORK_ATC_GATEWAY_IP + NETWORK_ATC_ENDPOINT + ipLoop + "/"
-                    try:
-                        response = requests.get(endpoint)
-                        tmp = {
-                            "ip": ipLoop, 
-                            "active": (response.status_code//200 == 1)
-                        }
-                    except:
-                        tmp = {
-                            "ip": ipLoop, 
-                            "active": False
-                        }
-                    data.append(tmp)
-            else:
-                endpoint = NETWORK_ATC_GATEWAY_IP + NETWORK_ATC_ENDPOINT + ip + "/"
-                try:
-                    response = requests.get(endpoint)
-                    if response.status_code//200 == 1:
-                        data.append(ipLoop)
-                except:
-                    pass
-            return JsonResponse({"data": data})        
 
-        try :
-            requestData = json.loads(request.body.decode("utf-8"))
-        except (UnicodeDecodeError, JSONDecodeError) as e:
-            return JsonResponse(
-                {
-                    "error": "Invalid JSON payload", 
-                    "details": str(e)
-                },
-                status=400
-            )
-
-        if 'ip' not in requestData:
-            return JsonResponse(
-                {
-                    "error": "Invalid request format. Missing 'ip' field"
-                },
-                status=400
-            )
-
-        endpoint = NETWORK_ATC_GATEWAY_IP + NETWORK_ATC_ENDPOINT + requestData['ip'] + "/"
-
-        if request.method == 'POST':
-            if 'data' not in requestData:
-                return JsonResponse(
-                    {
-                        "error": "Invalid request format. Missing 'data' field"
-                    },
-                    status=400
-                )
-            
-            headers = {
-                "Content-Type": "application/json"
-            }
-
-            try:
-                statusCode = 1
-                retryTime = NETWORK_ATC_MAX_RETRY
-                while statusCode//200 != 1 and retryTime > 0:
-                    response = requests.post(
-                        endpoint,
-                        headers=headers,
-                        json=requestData['data']
-                    ) 
-                    statusCode = response.status_code
-                    retryTime -= 1 
-                return JsonResponse(
-                    {
-                        "status": response.status_code,
-                        "data": ""
-                    },
-                    status=response.status_code
-                )
-            except Exception as e:
-                return JsonResponse({"error": str(e)}, status=500)
-
-        elif request.method == 'DELETE':
-            try:
-                response = requests.delete(
-                    endpoint
-                )    
-                return JsonResponse(
-                    {
-                        "status": response.status_code,
-                        "data": ""
-                    },
-                    status=response.status_code
-                )
-            except Exception as e:
-                return JsonResponse({"error": str(e)}, status=500)
-        else:
-            return JsonResponse(
-                {"error": "You do not have permission to access this resource."},
-                status=403
-            ) 
-        
 class AdbUtils:
     @staticmethod
-    def isDeviceExists(deviceId: str = "") -> bool:
-        cmd = ["adb", "devices"]
-
-        result = subprocess.run(cmd, capture_output=True, text=True)
-        output = result.stdout.strip().splitlines()
-
-        # Skip the first line: "List of devices attached"
-        devices = [line.split()[0] for line in output[1:] if line.strip()]
-
-        if deviceId:
-            return deviceId in devices
-        else:
-            return len(devices) > 0
+    def is_device_exists(device_id: str = "") -> bool:
+        result = subprocess.run(["adb", "devices"], capture_output=True, text=True)
+        devices = [
+            line.split()[0]
+            for line in result.stdout.strip().splitlines()[1:]
+            if line.strip()
+        ]
+        return device_id in devices if device_id else len(devices) > 0
 
     @staticmethod
-    def getDeviceIps(deviceId=None):
+    def get_device_ips(device_id: str = None) -> list[dict]:
         cmd = ["adb"]
-        if deviceId:
-            cmd += ["-s", deviceId]
+        if device_id:
+            cmd += ["-s", device_id]
         cmd += ["shell", "ip -f inet addr show"]
 
         result = subprocess.run(cmd, capture_output=True, text=True)
@@ -338,138 +280,124 @@ class AdbUtils:
             line = line.strip()
             if not line:
                 continue
-            # Detect new interface
             if line[0].isdigit() and ":" in line:
-                # Example: "3: wlan0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 ..."
                 parts = line.split(":")
                 if len(parts) >= 2:
                     current_iface = parts[1].strip().split()[0]
             elif line.startswith("inet ") and current_iface:
-                # Example: "inet 192.168.1.42/24 brd 192.168.1.255 scope global wlan0"
                 ip = line.split()[1].split("/")[0]
                 interfaces.append({"interface": current_iface, "ip": ip})
-
         return interfaces
 
     @staticmethod
-    def startActivityWithExtras(packageName, activityName, deviceId=None, stringExtras=None, intExtras=None, boolExtras=None):
+    def start_activity_with_extras(
+        package_name: str,
+        activity_name: str,
+        device_id: str = None,
+        string_extras: dict = None,
+        int_extras: dict = None,
+        bool_extras: dict = None,
+    ) -> None:
         cmd = ["adb"]
-        if deviceId:
-            cmd += ["-s", deviceId]
+        if device_id:
+            cmd += ["-s", device_id]
         cmd += ["shell", "am", "start"]
 
-        if stringExtras:
-            for key, val in stringExtras.items():
-                cmd += ["--es", key, str(val)]
+        for key, val in (string_extras or {}).items():
+            cmd += ["--es", key, str(val)]
+        for key, val in (int_extras or {}).items():
+            cmd += ["--ei", key, str(val)]
+        for key, val in (bool_extras or {}).items():
+            cmd += ["--ez", key, "true" if val else "false"]
 
-        if intExtras:
-            for key, val in intExtras.items():
-                cmd += ["--ei", key, str(val)]
+        cmd.append(f"{package_name}/{activity_name}")
+        subprocess.run(cmd, check=True)
 
-        if boolExtras:
-            for key, val in boolExtras.items():
-                cmd += ["--ez", key, "true" if val else "false"]
-
-        cmd.append(f"{packageName}/{activityName}")
-        try:
-            subprocess.run(cmd, check=True)
-        except Exception as e:
-            raise e
-
-    def pullFiles(src, des, deviceId=None, retries=DEFAULT_RETRY):
+    @staticmethod
+    def pull_files(src: str, dest: str, device_id: str = None, retries: int = DEFAULT_RETRY) -> None:
         cmd = ["adb"]
-        if deviceId:
-            cmd += ["-s", deviceId]
-        cmd += ["pull", src, des]
+        if device_id:
+            cmd += ["-s", device_id]
+        cmd += ["pull", src, dest]
 
-        attempt = 0
-        while attempt < retries:
+        for attempt in range(1, retries + 1):
             try:
                 subprocess.run(cmd, check=True, capture_output=True, text=True)
                 return
-            except subprocess.CalledProcessError as e:
-                attempt += 1
-                if attempt > retries:
+            except subprocess.CalledProcessError:
+                if attempt >= retries:
                     raise
                 time.sleep(1)
 
     @staticmethod
-    def pushFile(src, dest, deviceId=None, retries=DEFAULT_RETRY):
-
+    def push_file(src: str, dest: str, device_id: str = None, retries: int = DEFAULT_RETRY) -> None:
         cmd = ["adb"]
-        if deviceId:
-            cmd += ["-s", deviceId]
+        if device_id:
+            cmd += ["-s", device_id]
         cmd += ["push", src, dest]
 
-        attempt = 0
-        while attempt < retries:
+        for attempt in range(1, retries + 1):
             try:
                 subprocess.run(cmd, capture_output=True, text=True, check=True)
                 return
-            except subprocess.CalledProcessError as e:
-                attempt += 1
-                if attempt > retries:
+            except subprocess.CalledProcessError:
+                if attempt >= retries:
                     raise
                 time.sleep(1)
-    
+
     @staticmethod
-    def isFileExists(path, deviceId = None):
+    def is_file_exists(path: str, device_id: str = None) -> bool:
         cmd = ["adb"]
-        if deviceId:
-            cmd += ["-s", deviceId]
+        if device_id:
+            cmd += ["-s", device_id]
         cmd += ["shell", f"test -f {path} && echo 1 || echo 0"]
-
         result = subprocess.run(cmd, capture_output=True, text=True)
         return result.stdout.strip() == "1"
 
     @staticmethod
-    def isFolderExists(path, deviceId = None):
+    def is_folder_exists(path: str, device_id: str = None) -> bool:
         cmd = ["adb"]
-        if deviceId:
-            cmd += ["-s", deviceId]
+        if device_id:
+            cmd += ["-s", device_id]
         cmd += ["shell", f"test -d {path} && echo 1 || echo 0"]
-
         result = subprocess.run(cmd, capture_output=True, text=True)
         return result.stdout.strip() == "1"
-    
-    @staticmethod
-    def removeFolder(path, deviceId=None):
-        cmd = ["adb"]
-        if deviceId:
-            cmd += ["-s", deviceId]
-            
-        cmd += ["shell", f"rm -rf {path}"]
 
+    @staticmethod
+    def remove_folder(path: str, device_id: str = None) -> None:
+        cmd = ["adb"]
+        if device_id:
+            cmd += ["-s", device_id]
+        cmd += ["shell", f"rm -rf {path}"]
         subprocess.run(cmd, capture_output=True, text=True)
 
     @staticmethod
-    def getDownloadsPath(deviceId = None):
-        return AdbUtils.getDefaultPath(deviceId) + "/" + ANDROID_DOWNLOAD_PATH
-    
-    @staticmethod
-    def getDocumentPath(deviceId = None):
-        return AdbUtils.getDefaultPath(deviceId) + "/" + ANDROID_DOCUMENTS_PATH
+    def get_downloads_path(device_id: str = None) -> str:
+        from utils.constants import ANDROID_DOWNLOAD_PATH
+        return AdbUtils.get_default_path(device_id) + "/" + ANDROID_DOWNLOAD_PATH
 
     @staticmethod
-    def getAppPath(deviceId = None):
-        return AdbUtils.getDownloadsPath(deviceId) + "/" + ANDROID_DEMO_PATH
+    def get_document_path(device_id: str = None) -> str:
+        from utils.constants import ANDROID_DOCUMENTS_PATH
+        return AdbUtils.get_default_path(device_id) + "/" + ANDROID_DOCUMENTS_PATH
 
     @staticmethod
-    def getHistogramPath(deviceId = None):
-        return AdbUtils.getDocumentPath(deviceId) + "/" + ANDROID_HISTOGRAM_PATH
-
+    def get_app_path(device_id: str = None) -> str:
+        from utils.constants import ANDROID_DEMO_PATH
+        return AdbUtils.get_downloads_path(device_id) + "/" + ANDROID_DEMO_PATH
 
     @staticmethod
-    def getDefaultPath(deviceId = None):
-        candidates = [
-            "/storage/emulated/0",
-            "/sdcard",
-            "/mnt/sdcard"
-        ]
+    def get_histogram_path(device_id: str = None) -> str:
+        from utils.constants import ANDROID_HISTOGRAM_PATH
+        return AdbUtils.get_document_path(device_id) + "/" + ANDROID_HISTOGRAM_PATH
+
+    @staticmethod
+    def get_default_path(device_id: str = None) -> str:
+        candidates = ["/storage/emulated/0", "/sdcard", "/mnt/sdcard"]
         for path in candidates:
             cmd = ["adb"]
-            if deviceId:
-                cmd += ["-s", deviceId]
+            if device_id:
+                cmd += ["-s", device_id]
             cmd += ["shell", "ls", path]
             result = subprocess.run(cmd, capture_output=True, text=True)
             if "No such file" not in result.stdout and "not found" not in result.stdout:
@@ -477,285 +405,200 @@ class AdbUtils:
         return None
 
     @staticmethod
-    def createTmpDir(path, deviceId = None):
+    def create_tmp_dir(path: str, device_id: str = None) -> None:
         cmd = ["adb"]
-        if deviceId:
-            cmd += ["-s", deviceId]
+        if device_id:
+            cmd += ["-s", device_id]
         cmd += ["shell", "mkdir", "-p", path]
-
         subprocess.run(cmd, check=True)
-        print(f"Created dir: {path} on device {deviceId or ''}")
 
     @staticmethod
-    def getConnectedDevices():
+    def get_connected_devices() -> list[str]:
         try:
-            cmd = subprocess.run(
-                ["adb", "devices"],
-                capture_output=True,
-                text=True,
-                check=True
-            )
-            lines = cmd.stdout.strip().split("\n")[1:]  # skip "List of devices attached"
+            result = subprocess.run(["adb", "devices"], capture_output=True, text=True, check=True)
+            lines = result.stdout.strip().split("\n")[1:]
             return [line.split()[0] for line in lines if line.strip() and "device" in line]
         except subprocess.CalledProcessError as e:
-            print("Error running adb:", e)
+            print(f"[AdbUtils.get_connected_devices] {e}")
             return []
 
     @staticmethod
-    def isContainPackage(packageName: str , deviceId: str=None) -> bool:
+    def is_contain_package(package_name: str, device_id: str = None) -> bool:
         try:
             cmd = ["adb"]
-            if deviceId:
-                cmd += ["-s", deviceId]
-            cmd += ["shell", "pm", "list", "packages", "|", "grep", packageName]
-
+            if device_id:
+                cmd += ["-s", device_id]
+            cmd += ["shell", "pm", "list", "packages", "|", "grep", package_name]
             result = subprocess.run(" ".join(cmd), shell=True, capture_output=True, text=True)
-            return packageName in result.stdout
-        except Exception as e:
+            return package_name in result.stdout
+        except Exception:
             return False
-        
+
     @staticmethod
-    def isContainZrtcDemoApp(deviceId: str = None) -> bool:
-        return AdbUtils.isContainPackage(APP_PACKAGE)
-    
+    def is_contain_zrtc_demo_app(device_id: str = None) -> bool:
+        return AdbUtils.is_contain_package(APP_PACKAGE)
+
     @staticmethod
-    def getZrtcDemoApp() -> str:
+    def get_zrtc_demo_app() -> str:
         return APP_PACKAGE
-    
+
     @staticmethod
-    def installAndBuildZrtcDemo(deviceId):
+    def install_and_build_zrtc_demo(device_id: str) -> bool:
         try:
-            androidArch = AdbUtils.getAndroidArch(deviceId)
-            if (len(androidArch) <= 0): return False
-    
-            # if app has been already built
-            if os.path.isfile(f"{GIT_CLONE_FOLDER}/{settings.APP_SRC_PATH}/app/build/outputs/apk/debug/app-debug.apk"):
-                if AdbUtils.installApp(
-                f"{GIT_CLONE_FOLDER}/{settings.APP_SRC_PATH}/app/build/outputs/apk/debug/app-debug.apk",
-                deviceId):
+            android_arch = AdbUtils.get_android_arch(device_id)
+            if not android_arch:
+                return False
+
+            apk_path = (
+                f"{settings.GIT_CLONE_FOLDER}/{settings.APP_SRC_PATH}"
+                "/app/build/outputs/apk/debug/app-debug.apk"
+            )
+            if os.path.isfile(apk_path):
+                if AdbUtils.install_app(apk_path, device_id):
                     return False
-                FileUtils.removeFolder(GIT_CLONE_FOLDER)
+                FileUtils.remove_folder(settings.GIT_CLONE_FOLDER)
                 return True
-            
-            # Clone
-            FileUtils.removeFolder(GIT_CLONE_FOLDER)
-            clone_cmd = f"""
-                git clone --branch {settings.TARGET_BRANCH_NAME} \
-                --single-branch --depth 1 \
-                {settings.ZRTC_CORE_URL} \
-                {GIT_CLONE_FOLDER}
-            """
+
+            FileUtils.remove_folder(settings.GIT_CLONE_FOLDER)
+            clone_cmd = (
+                f"git clone --branch {settings.TARGET_BRANCH_NAME} "
+                f"--single-branch --depth 1 "
+                f"{settings.ZRTC_CORE_URL} {settings.GIT_CLONE_FOLDER}"
+            )
             if subprocess.run(clone_cmd, shell=True, preexec_fn=os.setsid).returncode != 0:
                 return False
-                
-            # Build core
-            build_core_cmd = f"""
-                pwd &&
-                rm -rf .git && \
-                sed -i '2s|.*|compilerPath={settings.NDK_PATH}|' projects/nbprojects-android/common.mk && \
-                ./build/android/clean_all.sh && \
-                ./build/android/{androidArch}_build_debug.sh $(nproc)
-            """
 
-            if subprocess.run(build_core_cmd, cwd=GIT_CLONE_FOLDER, shell=True, preexec_fn=os.setsid).returncode != 0:
+            build_core_cmd = (
+                f"pwd && rm -rf .git && "
+                f"sed -i '2s|.*|compilerPath={settings.NDK_PATH}|' "
+                f"projects/nbprojects-android/common.mk && "
+                f"./build/android/clean_all.sh && "
+                f"./build/android/{android_arch}_build_debug.sh $(nproc)"
+            )
+            if subprocess.run(
+                build_core_cmd, cwd=settings.GIT_CLONE_FOLDER, shell=True, preexec_fn=os.setsid
+            ).returncode != 0:
                 return False
 
-            # Build demo
-            demo_path = os.path.join(GIT_CLONE_FOLDER, settings.APP_SRC_PATH)
-            gradle_file = os.path.join(demo_path, "gradle.properties") 
-            with open(gradle_file, "a") as f: 
+            demo_path = os.path.join(settings.GIT_CLONE_FOLDER, settings.APP_SRC_PATH)
+            gradle_file = os.path.join(demo_path, "gradle.properties")
+            with open(gradle_file, "a") as f:
                 f.write(f"\norg.gradle.java.home={settings.JVM_17_PATH}\n")
 
-            if subprocess.run("./gradlew installDebug", cwd=demo_path, shell=True, preexec_fn=os.setsid).returncode != 0:
+            if subprocess.run(
+                "./gradlew installDebug", cwd=demo_path, shell=True, preexec_fn=os.setsid
+            ).returncode != 0:
                 return False
 
-            FileUtils.removeFolder(GIT_CLONE_FOLDER)
+            FileUtils.remove_folder(settings.GIT_CLONE_FOLDER)
             return True
 
         except Exception as e:
-            print("Error:", str(e))
+            print(f"[AdbUtils.install_and_build_zrtc_demo] {e}")
             return False
-            
 
     @staticmethod
-    def installApp(appPath, deviceId=None):
+    def install_app(app_path: str, device_id: str = None) -> bool:
         cmd = ["adb"]
-        if deviceId:
-            cmd += ["-s", deviceId]
-        cmd += [
-            "install",
-            appPath
-        ]
-
+        if device_id:
+            cmd += ["-s", device_id]
+        cmd += ["install", app_path]
         result = subprocess.run(" ".join(cmd), shell=True, capture_output=True, text=True)
         return result.returncode == 0 and "Success" in result.stdout
-    
-    @staticmethod
-    def hasActivity(packageName, activityName, deviceId=None):
-        cmd = ["adb"]
-        if deviceId:
-            cmd += ["-s", deviceId]
-        cmd += [
-            "shell",
-            f"dumpsys package {packageName} | grep {activityName}"
-        ]
-
-        result = subprocess.run(" ".join(cmd), shell=True, capture_output=True, text=True)
-        return result.returncode == 0 and activityName in result.stdout
 
     @staticmethod
-    def getAndroidArch(deviceId=None):
+    def has_activity(package_name: str, activity_name: str, device_id: str = None) -> bool:
         cmd = ["adb"]
-        if deviceId:
-            cmd += ["-s", deviceId]
-        cmd += [
-            "shell",
-            "getprop ro.product.cpu.abi"
-        ]
-
+        if device_id:
+            cmd += ["-s", device_id]
+        cmd += ["shell", f"dumpsys package {package_name} | grep {activity_name}"]
         result = subprocess.run(" ".join(cmd), shell=True, capture_output=True, text=True)
-        if (result.returncode != 0 or result.stdout.strip() not in ANDROID_ARCH):
+        return result.returncode == 0 and activity_name in result.stdout
+
+    @staticmethod
+    def get_android_arch(device_id: str = None) -> str:
+        cmd = ["adb"]
+        if device_id:
+            cmd += ["-s", device_id]
+        cmd += ["shell", "getprop ro.product.cpu.abi"]
+        result = subprocess.run(" ".join(cmd), shell=True, capture_output=True, text=True)
+        abi = result.stdout.strip()
+        if result.returncode != 0 or abi not in ANDROID_ARCH:
             return ""
-        
-        return ANDROID_ARCH[result.stdout.strip()]
+        return ANDROID_ARCH[abi]
 
     @staticmethod
-    def getZrtcDemoAppTargetActivities(deviceId=None) -> list[str]:
-        targetActivities = [LOGIN_ACTIVITY, MAIN_ACTIVITY]
-        zrtcDemoApp = AdbUtils.getZrtcDemoApp()
-        
-        return [act for act in targetActivities if AdbUtils.hasActivity(zrtcDemoApp, act, deviceId)]
-    
+    def get_zrtc_demo_app_target_activities(device_id: str = None) -> list[str]:
+        from utils.constants import LOGIN_ACTIVITY, MAIN_ACTIVITY
+        zrtc_demo_app = AdbUtils.get_zrtc_demo_app()
+        return [
+            act for act in [LOGIN_ACTIVITY, MAIN_ACTIVITY]
+            if AdbUtils.has_activity(zrtc_demo_app, act, device_id)
+        ]
+
     @staticmethod
-    def getCpuUsage(deviceId: str = None, packageName: str = PACKAGE_DOMAIN) -> float:
+    def get_cpu_usage(device_id: str = None, package_name: str = PACKAGE_DOMAIN) -> float:
         try:
             cmd = ["adb"]
-            if deviceId:
-                cmd += ["-s", deviceId]
-            cmd += ["shell", "top", "-n", "1", "|", "grep", packageName, "|", "awk", "'{print $9}'"]
-
-            result = subprocess.run(
-                " ".join(cmd),
-                shell=True,
-                capture_output=True,
-                text=True,
-                timeout=5
-            )
-
+            if device_id:
+                cmd += ["-s", device_id]
+            cmd += ["shell", "top", "-n", "1", "|", "grep", package_name, "|", "awk", "'{print $9}'"]
+            result = subprocess.run(" ".join(cmd), shell=True, capture_output=True, text=True, timeout=5)
             if result.returncode != 0 or not result.stdout.strip():
                 return -1
-
-            # Clean output (e.g., "12%" -> 12.0)
-            cpu_str = result.stdout.strip().replace('%', '')
-            # Sometimes multiple lines may appear — take the first valid number
-            for token in cpu_str.splitlines():
+            for token in result.stdout.strip().replace("%", "").splitlines():
                 try:
                     return float(token)
                 except ValueError:
                     continue
-
+            return -1
+        except (subprocess.TimeoutExpired, Exception):
             return -1
 
-        except subprocess.TimeoutExpired:
-            return -1
-        except Exception:
-            return -1
-        
     @staticmethod
-    def getMemUsage(deviceId: str = None, 
-                    packageName: str = APP_PACKAGE
-                    ) -> float:
+    def get_mem_usage(device_id: str = None, package_name: str = APP_PACKAGE) -> float:
         try:
             cmd = ["adb"]
-            if deviceId:
-                cmd += ["-s", deviceId]
-            cmd += ["shell", "dumpsys", "meminfo", packageName, "||", "grep", "Total"]
-
-            result = subprocess.run(
-                cmd,
-                capture_output=True,
-                text=True,
-                timeout=5
-            )
-
+            if device_id:
+                cmd += ["-s", device_id]
+            cmd += ["shell", "dumpsys", "meminfo", package_name, "||", "grep", "Total"]
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=5)
             if result.returncode != 0 or not result.stdout.strip():
                 return -1
-
-            output = result.stdout
-            match = re.search(r"TOTAL\s+PSS:\s+([\d,]+)", output)
+            match = re.search(r"TOTAL\s+PSS:\s+([\d,]+)", result.stdout)
             if match:
-                value = match.group(1).replace(',', '')
-                return int(value)
-
+                return int(match.group(1).replace(",", ""))
+            return -1
+        except (subprocess.TimeoutExpired, Exception):
             return -1
 
-        except subprocess.TimeoutExpired:
-            return -1
-        except Exception:
-            return -1
-    
-    def resetAndroid(deviceId: str = None, packageName: str = APP_PACKAGE):
-            cmdKill = ["adb"]
-            if deviceId:
-                cmdKill += ["-s", deviceId]
-            cmdKill += ["shell", "am", "force-stop", packageName]
+    @staticmethod
+    def reset_android(device_id: str = None, package_name: str = APP_PACKAGE) -> None:
+        def _run(*extra):
+            cmd = ["adb"]
+            if device_id:
+                cmd += ["-s", device_id]
+            cmd += list(extra)
+            try:
+                subprocess.run(cmd, timeout=5)
+            except Exception:
+                pass
 
-            subprocess.run(
-                cmdKill,
-                timeout=5
-            )
+        _run("shell", "am", "force-stop", package_name)
+        _run("shell", "am", "clean", package_name)
+        _run("shell", "am", "kill-all")
+        _run("shell", "pm", "trim-caches", "999999999999")
+        _run("shell", '"echo 3 > /proc/sys/vm/drop_caches"')
 
-            cmdKill = ["adb"]
-            if deviceId:
-                cmdKill += ["-s", deviceId]
-            cmdKill += ["shell", "am", "clean", packageName]
-
-            subprocess.run(
-                cmdKill,
-                timeout=5
-            )
-
-            cmdKill = ["adb"]
-            if deviceId:
-                cmdKill += ["-s", deviceId]
-            cmdKill += ["shell", "am", "kill-all"]
-
-            subprocess.run(
-                cmdKill,
-                timeout=5
-            )
-
-            cmdClearCache = ["adb"]
-            if deviceId:
-                cmdClearCache += ["-s", deviceId]
-            cmdClearCache += ["shell", "pm", "trim-caches", "999999999999"]
-
-            subprocess.run(
-                cmdClearCache,
-                timeout=5
-            )
-
-            cmdFlushRAM = ["adb"]
-            if deviceId:
-                cmdFlushRAM += ["-s", deviceId]
-            cmdFlushRAM += ["shell", '"echo 3 > /proc/sys/vm/drop_caches"']
-
-            subprocess.run(
-                cmdFlushRAM
-            )
 
 class StatUtils:
     @staticmethod
-    def getStat(device_id, path, timeout):
-        if not os.path.exists(path):
-            os.makedirs(path)
+    def get_stat(device_id: str, path: str, timeout: int) -> None:
+        os.makedirs(path, exist_ok=True)
+        FileUtils.remove_stat_file("cpu", path)
+        FileUtils.remove_stat_file("mem", path)
 
-        FileUtils.removeStatFile("cpu", path)
-        FileUtils.removeStatFile("mem", path)
-
-        curTime = 0
-        while curTime < timeout:
-            curTime += 1
-            FileUtils.writeStat(path, "cpu", AdbUtils.getCpuUsage(device_id))
-            FileUtils.writeStat(path, "mem", AdbUtils.getMemUsage(device_id) / 1000.0)
+        for _ in range(timeout):
+            FileUtils.write_stat(path, "cpu", AdbUtils.get_cpu_usage(device_id))
+            FileUtils.write_stat(path, "mem", AdbUtils.get_mem_usage(device_id) / 1000.0)
             time.sleep(1)

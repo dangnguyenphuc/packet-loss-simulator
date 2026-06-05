@@ -1,7 +1,7 @@
 from django.views.decorators.csrf import csrf_exempt
-from utils.utils import RequestUtils
+from utils.utils import AtcClient
 
-# Create your views here.
+
 @csrf_exempt
-def proxyHandler(request):
-    return RequestUtils.atcRequest(request)
+def proxy_handler(request):
+    return AtcClient.handle_request(request)

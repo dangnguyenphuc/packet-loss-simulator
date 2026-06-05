@@ -1,89 +1,39 @@
 <template>
-  <v-divider :thickness="2" color="black"></v-divider>
-    <v-row class="d-flex justify-center align-center pa-2 ga-3">
-      <v-col cols="12" class="d-flex justify-start align-center">
-        <h3>Test Result:</h3>
-      </v-col>
-      <!-- Failed -->
-      <template v-if="result.status === RES_STATUS.FAILED">
-        <v-col>
-          <v-alert type="error" dense text>
-            {{ result.errorMessage }}
-          </v-alert>
-        </v-col>
-      </template>
+  <v-divider :thickness="2" color="black" />
+  <v-row class="d-flex justify-center align-center pa-2 ga-3">
+    <v-col cols="12" class="d-flex justify-start align-center">
+      <h3>Test Result:</h3>
+    </v-col>
 
-      <!-- Success -->
-      <template v-else-if="result.status === RES_STATUS.SUCCESS">
-        <v-col>
-          <v-list>
-            <v-list-item v-for="audioFile in result.audioFiles" :key="audioFile">
-              <AudioPlayer :title='audioFile.split("/").at(-1).split("_")[0].toUpperCase()' :audioURL="audioFile"/>
-            </v-list-item>
-          </v-list>
-        </v-col>
-        <!-- Log file -->
-        <v-col>
-          <v-text-field
-            v-model="result.logFile"
-            label="Log File"
-            readonly
-            dense
-            hide-details
-          />
-          <!-- <v-btn
-            density="compact"
-            prepend-icon="mdi-open-in-app"
-            class="mt-1"
-            @click="openLog(result.logFile)"
-          >
-            Open Log
-          </v-btn> -->
-        </v-col>
-      </template>
-    </v-row>
+    <template v-if="result.status === RES_STATUS.FAILED">
+      <v-col>
+        <v-alert type="error" dense text>{{ result.errorMessage }}</v-alert>
+      </v-col>
+    </template>
+
+    <template v-else-if="result.status === RES_STATUS.SUCCESS">
+      <v-col>
+        <v-list>
+          <v-list-item v-for="audioFile in result.audioFiles" :key="audioFile">
+            <AudioPlayer
+              :title="audioFile.split('/').at(-1).split('_')[0].toUpperCase()"
+              :audioURL="audioFile"
+            />
+          </v-list-item>
+        </v-list>
+      </v-col>
+      <v-col>
+        <v-text-field v-model="result.logFile" label="Log File" readonly dense hide-details />
+      </v-col>
+    </template>
+  </v-row>
 </template>
 
-<script>
-import { RES_STATUS } from "../../constants/enums";
-import AudioPlayer from "../AudioPlayer.vue";
+<script setup>
+import { RES_STATUS } from '../../constants/enums'
+import AudioPlayer from '../AudioPlayer.vue'
 
-export default {
-  name: "Result",
-  components: {AudioPlayer},
-  props: {
-    result: {
-      type: Object,
-      required: true,
-    },
-  },
-  data() {
-    return {
-      RES_STATUS,
-      audioInstance: null,
-    };
-  },
-  methods: {
-    playAudio(file) {
-      if (!file) return;
-      this.stopAudio();
-      this.audioInstance = new Audio(file);
-      this.audioInstance.play();
-    },
-    stopAudio() {
-      if (this.audioInstance) {
-        this.audioInstance.pause();
-        this.audioInstance.currentTime = 0;
-        this.audioInstance = null;
-      }
-    },
-    onAudioChange(newFile) {
-      this.stopAudio();
-      console.log("Selected new audio file:", newFile);
-    },
-    openLog(file) {
-      console.log("Opening log file:", file);
-    },
-  },
-};
+defineProps({
+  result: { type: Object, required: true },
+})
 </script>

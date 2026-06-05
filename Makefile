@@ -31,8 +31,9 @@ PYTHON3_BIN := /usr/bin/python3.12
 PIP3_BIN := /usr/bin/pip3.12
 PROJECT_DJANGO_PORT := 8000
 PROJECT_FRONTEND_PORT := 5173
+FRONTEND_DIR := $(PROJECT_DIR)frontend/loss-simulator
 
-.PHONY: run stop logs clean restart atc-reboot atcd-log atcui-log
+.PHONY: run run-single stop logs clean restart build-frontend watch-frontend atc-reboot atcd-log atcui-log
 
 atc-reboot:
 	@echo Project dir: $(PROJECT_DIR)
@@ -76,6 +77,22 @@ atcui-log:
 	@echo "[INFO] Showing logs for atcui.service..."
 	sudo journalctl -u atcui.service -f
 
+build-frontend:
+	@echo "[INFO] Building Vue frontend..."
+	npm run build --prefix $(FRONTEND_DIR)
+
+watch-frontend:
+	@echo "[INFO] Watching Vue frontend for changes (Ctrl+C to stop)..."
+	npm run build:watch --prefix $(FRONTEND_DIR)
+
+run-single: stop atc-reboot build-frontend
+	@echo "[INFO] Starting Django only (single-port) on port=$(PROJECT_DJANGO_PORT)"
+	PROJECT_DIR=$(PROJECT_DIR) \
+	PYTHON_BIN=$(PYTHON3_BIN) \
+	PIP_BIN=$(PIP3_BIN) \
+	DJANGO_PORT=$(PROJECT_DJANGO_PORT) \
+	bash $(PROJECT_DIR)run-single.sh
+
 run: stop atc-reboot
 	@echo "[INFO] Starting project with Python=$(PYTHON3_BIN), Django port=$(PROJECT_DJANGO_PORT), Frontend port=$(PROJECT_FRONTEND_PORT)"
 	PROJECT_DIR=$(PROJECT_DIR) \
@@ -93,7 +110,7 @@ stop:
 
 logs:
 	@echo "[INFO] Tailing logs..."
-	@tail -f $(PROJECT_DIR)django.log $(PROJECT_DIR)frontend.log
+	@tail -f $(PROJECT_DIR)django.log $(PROJECT_DIR)frontend.log 2>/dev/null || tail -f $(PROJECT_DIR)django.log
 
 clean:
 	@echo "[INFO] Cleaning logs..."
