@@ -18,3 +18,4 @@ lossSimulator/zrtc/*.*
 lossSimulator/zrtc
 lossSimulator/config.env
 NISQA/flask/*
+lossSimulator/static/vue/audio/*

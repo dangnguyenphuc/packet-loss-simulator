@@ -585,10 +585,8 @@ class AdbUtils:
                 pass
 
         _run("shell", "am", "force-stop", package_name)
-        _run("shell", "am", "clean", package_name)
         _run("shell", "am", "kill-all")
         _run("shell", "pm", "trim-caches", "999999999999")
-        _run("shell", '"echo 3 > /proc/sys/vm/drop_caches"')
 
 
 class StatUtils:

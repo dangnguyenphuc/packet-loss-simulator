@@ -8,6 +8,9 @@
       <v-col class="d-flex justify-center align-center">
         <v-btn prepend-icon="$vuetify" @click="validateNumTests">Generate Test</v-btn>
       </v-col>
+      <v-col class="d-flex justify-center align-center">
+        <v-checkbox v-model="pullAudio" label="Pull Record Audio" hide-details />
+      </v-col>
     </v-row>
 
     <!-- Panels -->
@@ -98,6 +101,7 @@ const props = defineProps({
 const emit = defineEmits([EVENT_OPEN_TOAST])
 
 const numTests        = ref('0')
+const pullAudio       = ref(false)
 const configs         = ref([])
 const configsBuffer   = ref([])
 const expanded        = ref([])
@@ -298,6 +302,8 @@ async function startAndroidApp(index) {
     return delay
   })
 
+  const shouldPullAudio = pullAudio.value
+
   try {
     test.status = TEST_STATUS.TESTING
     test.result = null
@@ -309,12 +315,14 @@ async function startAndroidApp(index) {
       complexity:    test.complexity,
       decComplexity: test.decComplexity,
       dredDuration:  test.dredDuration,
+      pullAudio:     shouldPullAudio,
     })
 
     const isAccepted = startAppRes?.status === 'started' || startAppRes?.status === 'queued'
     if (!isAccepted) throw new Error('Android App: Cannot start App')
 
     test.taskId = startAppRes.taskId
+    console.log(test)
 
     for (let j = 0; j < test.atcConfigs.length; j++) {
       if (test.cancelled) return
@@ -336,7 +344,11 @@ async function startAndroidApp(index) {
       if (test.cancelled) return
       runAppRes = await getAppRes(startAppRes.taskId)
 
-      if (runAppRes?.status === 'done' && runAppRes.result.audioFiles?.length > 0 && runAppRes.result.zrtcLog?.length > 0) {
+      if (runAppRes?.status === 'done' && !shouldPullAudio) {
+        test.result = { status: RES_STATUS.SUCCESS, audioFiles: [], logFile: null }
+        test.status = TEST_STATUS.PASS
+        break
+      } else if (runAppRes?.status === 'done' && runAppRes.result.audioFiles?.length > 0 && runAppRes.result.zrtcLog?.length > 0) {
         test.result = {
           status:     RES_STATUS.SUCCESS,
           audioFiles: runAppRes.result.audioFiles,
@@ -364,7 +376,7 @@ async function startAndroidApp(index) {
   }
 
   try {
-    await stopApp(test.taskId)
+    if (test.taskId) await stopApp(test.taskId)
     test.taskId = ''
   } catch { /* best-effort */ }
 }

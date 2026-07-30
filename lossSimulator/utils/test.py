@@ -26,8 +26,10 @@ def start_activity_with_extras(package_name, activity_name, device_id=None, stri
 
     cmd.append(f"{package_name}/{activity_name}")
     try:
+        print("dangn")
         subprocess.run(cmd, check=True)
     except Exception as e:
+        print(e)
         raise e
 
 

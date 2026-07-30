@@ -15,7 +15,7 @@ from utils.constants import DEFAULT_EVAL_TIMEOUT, DESKTOP_STATIC_FOLDER
 from main.services.task_store import myCache, tasks
 from main.services.task_runner import task_queue, build_app
 
-from multiprocessing import Process
+from multiprocessing import Process, Event
 
 
 @method_decorator(csrf_exempt, name="dispatch")
@@ -81,6 +81,7 @@ class TaskRunView(View):
             return self._invalid_json_response(e)
 
         task_id = str(uuid.uuid4())
+        start_event = Event()
         tasks[task_id] = {
             "thread": [],
             "type": "run",
@@ -97,8 +98,15 @@ class TaskRunView(View):
             "timeout": data.get("time", DEFAULT_EVAL_TIMEOUT),
             "complexity": data.get("complexity", 5),
             "folder_name": data.get("folderName"),
+            "pull_audio": data.get("pullAudio", False),
+            "start_event": start_event,
         })
-        return JsonResponse({"status": "queued", "taskId": task_id}, status=202)
+
+        # Block the response until the queued app process has actually started
+        # (or failed to), so the frontend's countdown stays in sync with the
+        # backend's eval timeout instead of starting the moment it's queued.
+        start_event.wait()
+        return JsonResponse({"status": "started", "taskId": task_id}, status=202)
 
 
 @method_decorator(csrf_exempt, name="dispatch")
@@ -124,6 +132,9 @@ class TaskDetailView(View):
         result = myCache.get(task_id)
         if not result:
             return JsonResponse({"status": "failed"}, status=404)
+
+        if result.get("skipped"):
+            return JsonResponse({"status": "done", "result": result}, status=200)
 
         valid_audio = any(
             AudioUtils.is_valid_audio_file(audio, result["duration"])

@@ -3,7 +3,7 @@ import threading
 import time
 import os
 
-from multiprocessing import Process, Event
+from multiprocessing import Process
 from django.conf import settings
 
 from utils.utils import FileUtils, AdbUtils, StatUtils
@@ -33,6 +33,7 @@ def run_app(
     start_event,
     complexity: int = None,
     folder_name: str = None,
+    pull_audio: bool = False,
 ) -> None:
     controller = AndroidAppController(device_id=device_id)
     static_folder = FileUtils.get_abs_path(str(settings.BASE_DIR) + "/" + DESKTOP_STATIC_FOLDER)
@@ -57,6 +58,23 @@ def run_app(
         controller.string_extras["OPUS_COMPLEXITY"] = complexity
         controller.start_eval(start_event)
         time.sleep(timeout)
+
+        if not pull_audio:
+            myCache[task_id] = {
+                "time": time.time(),
+                "duration": timeout,
+                "audioFiles": [],
+                "zrtcLog": [],
+                "skipped": True,
+            }
+            try:
+                controller.press("back")
+                controller.press("back")
+                controller.stop_app()
+            except Exception as e:
+                print(f"[run_app] Teardown exception (ignored, pull_audio=False): {e}")
+            return
+
         controller.press("back")
         controller.press("back")
         controller.stop_app()
@@ -96,7 +114,9 @@ def _worker() -> None:
         tmp["status"] = "running"
         tasks[task_id] = tmp
 
-        start_event = Event()
+        pull_audio = item["pull_audio"]
+        start_event = item["start_event"]
+
         run = Process(
             target=run_app,
             args=(
@@ -109,23 +129,27 @@ def _worker() -> None:
                 start_event,
                 item["complexity"],
                 item["folder_name"],
+                pull_audio,
             ),
         )
         run.start()
         start_event.wait()
 
-        stat_monitor = Process(
-            target=StatUtils.get_stat,
-            args=(item["device_id"], tasks[task_id]["targetFolder"], item["timeout"]),
-        )
-        stat_monitor.start()
+        stat_monitor = None
+        if pull_audio:
+            stat_monitor = Process(
+                target=StatUtils.get_stat,
+                args=(item["device_id"], tasks[task_id]["targetFolder"], item["timeout"]),
+            )
+            stat_monitor.start()
 
         tmp = tasks.get(task_id, {})
-        tmp["thread"] = [stat_monitor.pid, run.pid]
+        tmp["thread"] = [run.pid] if stat_monitor is None else [stat_monitor.pid, run.pid]
         tasks[task_id] = tmp
 
         run.join()
-        stat_monitor.join()
+        if stat_monitor is not None:
+            stat_monitor.join()
 
         task_queue.task_done()
 
