@@ -26,6 +26,7 @@ class AndroidAppController:
 
         self.timestamp = DateTimeUtils.get_timestamped()
         default_path = AdbUtils.get_downloads_path(self.d.serial) + "/" + path
+        self.default_path = default_path
         self.store_path = default_path + "/" + self.timestamp
 
         AdbUtils.remove_folder(default_path)
@@ -33,7 +34,7 @@ class AndroidAppController:
 
         device_audio_file = default_path + "/" + AUDIO_FILE
         AdbUtils.push_file(STATIC_FOLDER + AUDIO_FILE, device_audio_file)
-        time.sleep(5)
+        time.sleep(4)
 
         self.string_extras = {
             "CALL_MODE": call_mode,

@@ -330,6 +330,15 @@ class AdbUtils:
                 time.sleep(1)
 
     @staticmethod
+    def list_device_files(path: str, device_id: str = None, pattern: str = "*") -> list[str]:
+        cmd = ["adb"]
+        if device_id:
+            cmd += ["-s", device_id]
+        cmd += ["shell", "find", path, "-maxdepth", "1", "-type", "f", "-name", pattern]
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        return [line.strip() for line in result.stdout.splitlines() if line.strip()]
+
+    @staticmethod
     def push_file(src: str, dest: str, device_id: str = None, retries: int = DEFAULT_RETRY) -> None:
         cmd = ["adb"]
         if device_id:

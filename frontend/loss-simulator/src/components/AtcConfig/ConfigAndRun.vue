@@ -86,6 +86,7 @@ import {
   MAX_RETRIES, RETRY_DELAY, EVAL_COMPLEX, EVAL_LOSS_PERCENTAGE,
   EVAL_NORMAL_AND_PLC, EVAL_NETWORK_TYPE, EVAL_DEC_COMPLEX,
   EVAL_DRED, MAX_CONFIG_SIZE, EVAL_RTT,
+  EVAL_SUBCASE_LOSS, EVAL_SUBCASE_DELAY,
 } from '../../constants/constant'
 import AtcConfig from './AtcConfig.vue'
 import Result from './Result.vue'
@@ -175,6 +176,8 @@ function validateNumTests() {
     generateSampleConfigsForPlc()
   } else if (trimmed === 'dred') {
     generateSampleConfigsForDred()
+  } else if (trimmed === 'full') {
+    generateFullSweepConfigs()
   } else {
     const value = Math.max(0, parseInt(trimmed, 10) || 0)
     numTests.value = String(value)
@@ -232,6 +235,31 @@ function generateSampleConfigsForDred() {
             } catch { /* skip on parse error */ }
           }
         }
+      }
+    }
+  }
+}
+
+// For every ATC network config: 10 paired loss/delay sub-cases, run with
+// Opus PLC enabled for all of them, then the same set again with PLC off.
+function generateFullSweepConfigs() {
+  configs.value = []
+  configsBuffer.value = []
+  let index = 0
+  for (const usePlc of [true, false]) {
+    for (const curNetwork of EVAL_NETWORK_TYPE) {
+      for (let i = 0; i < EVAL_SUBCASE_LOSS.length; i++) {
+        let networkData = curNetwork.data
+        try {
+          const json = JSON.parse(networkData)
+          json.down.loss.percentage = EVAL_SUBCASE_LOSS[i]
+          json.down.delay.delay = String(EVAL_SUBCASE_DELAY[i])
+          networkData = JSON.stringify(json)
+        } catch { /* invalid JSON — skip mutation */ }
+        const test = createTestPlc(index, 6, usePlc, curNetwork.name, networkData)
+        if (configs.value.length < MAX_CONFIG_SIZE) configs.value.push(test)
+        else configsBuffer.value.push(test)
+        index++
       }
     }
   }
@@ -345,7 +373,11 @@ async function startAndroidApp(index) {
       runAppRes = await getAppRes(startAppRes.taskId)
 
       if (runAppRes?.status === 'done' && !shouldPullAudio) {
-        test.result = { status: RES_STATUS.SUCCESS, audioFiles: [], logFile: null }
+        test.result = {
+          status:     RES_STATUS.SUCCESS,
+          audioFiles: [],
+          logFile:    runAppRes.result?.zrtcLog?.[0] ?? null,
+        }
         test.status = TEST_STATUS.PASS
         break
       } else if (runAppRes?.status === 'done' && runAppRes.result.audioFiles?.length > 0 && runAppRes.result.zrtcLog?.length > 0) {
