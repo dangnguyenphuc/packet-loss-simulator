@@ -86,6 +86,7 @@ import {
   MAX_RETRIES, RETRY_DELAY, EVAL_COMPLEX, EVAL_LOSS_PERCENTAGE,
   EVAL_NORMAL_AND_PLC, EVAL_NETWORK_TYPE, EVAL_DEC_COMPLEX,
   EVAL_DRED, MAX_CONFIG_SIZE, EVAL_RTT,
+  EVAL_SUBCASE_LOSS, EVAL_SUBCASE_DELAY,
 } from '../../constants/constant'
 import AtcConfig from './AtcConfig.vue'
 import Result from './Result.vue'
@@ -175,6 +176,10 @@ function validateNumTests() {
     generateSampleConfigsForPlc()
   } else if (trimmed === 'dred') {
     generateSampleConfigsForDred()
+  } else if (trimmed === 'full') {
+    generateFullSweepConfigs()
+  } else if (/^full:\d+$/.test(trimmed)) {
+    generateFullSweepConfigs(parseInt(trimmed.split(':')[1], 10))
   } else {
     const value = Math.max(0, parseInt(trimmed, 10) || 0)
     numTests.value = String(value)
@@ -208,6 +213,7 @@ function generateSampleConfigsForPlc() {
       }
     }
   }
+  numTests.value = String(configs.value.length + configsBuffer.value.length)
 }
 
 function generateSampleConfigsForDred() {
@@ -235,6 +241,45 @@ function generateSampleConfigsForDred() {
       }
     }
   }
+  numTests.value = String(configs.value.length + configsBuffer.value.length)
+}
+
+// For every ATC network config: the full loss x delay cross product (10
+// loss values x 10 delay values, independently varied — not paired by
+// index), run with Opus PLC enabled for all of them, then the same set
+// again with PLC off. `skip` drops the first N sequential cases — use it
+// to resume a "full" run interrupted partway through, without re-testing
+// already-done cases.
+function generateFullSweepConfigs(skip = 0) {
+  configs.value = []
+  configsBuffer.value = []
+  let index = 0
+  for (const usePlc of [true, false]) {
+    for (const curNetwork of EVAL_NETWORK_TYPE) {
+      for (const loss of EVAL_SUBCASE_LOSS) {
+        for (const rtt of EVAL_SUBCASE_DELAY) {
+          if (index < skip) { index++; continue }
+          let networkData = curNetwork.data
+          try {
+            const json = JSON.parse(networkData)
+            json.down.loss.percentage = loss
+            // Some base profiles (3G-Poor, 4G-Poor, 5G-Poor, Wifi-Average/Poor)
+            // carry a non-zero loss.correlation; the ATC daemon rejects
+            // correlation > 0 paired with 0% loss ("loss correlation requires
+            // loss to be set"), so keep them consistent with our override.
+            json.down.loss.correlation = loss === 0 ? 0 : json.down.loss.correlation
+            json.down.delay.delay = String(rtt)
+            networkData = JSON.stringify(json)
+          } catch { /* invalid JSON — skip mutation */ }
+          const test = createTestPlc(index, 6, usePlc, curNetwork.name, networkData)
+          if (configs.value.length < MAX_CONFIG_SIZE) configs.value.push(test)
+          else configsBuffer.value.push(test)
+          index++
+        }
+      }
+    }
+  }
+  numTests.value = String(configs.value.length + configsBuffer.value.length)
 }
 
 // ── CRUD ──────────────────────────────────────────────────────────────────────
@@ -345,7 +390,11 @@ async function startAndroidApp(index) {
       runAppRes = await getAppRes(startAppRes.taskId)
 
       if (runAppRes?.status === 'done' && !shouldPullAudio) {
-        test.result = { status: RES_STATUS.SUCCESS, audioFiles: [], logFile: null }
+        test.result = {
+          status:     RES_STATUS.SUCCESS,
+          audioFiles: [],
+          logFile:    runAppRes.result?.zrtcLog?.[0] ?? null,
+        }
         test.status = TEST_STATUS.PASS
         break
       } else if (runAppRes?.status === 'done' && runAppRes.result.audioFiles?.length > 0 && runAppRes.result.zrtcLog?.length > 0) {
@@ -401,6 +450,11 @@ async function runTests() {
       await new Promise(resolve => setTimeout(resolve, RETRY_DELAY))
     }
   }
+
+  // The move-every-50 loop above only flushes when entering a NEW batch —
+  // the final batch (full or a partial tail) has nothing after it to
+  // trigger that, so it never gets moved out of public/audio without this.
+  try { await moveAudios(props.deviceId) } catch { /* best-effort */ }
 }
 
 function openToast(componentName = '', header = '', message = '', timeout = TOAST_TIMEOUT) {

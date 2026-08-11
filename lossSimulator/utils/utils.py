@@ -330,6 +330,15 @@ class AdbUtils:
                 time.sleep(1)
 
     @staticmethod
+    def list_device_files(path: str, device_id: str = None, pattern: str = "*") -> list[str]:
+        cmd = ["adb"]
+        if device_id:
+            cmd += ["-s", device_id]
+        cmd += ["shell", "find", path, "-maxdepth", "1", "-type", "f", "-name", pattern]
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        return [line.strip() for line in result.stdout.splitlines() if line.strip()]
+
+    @staticmethod
     def push_file(src: str, dest: str, device_id: str = None, retries: int = DEFAULT_RETRY) -> None:
         cmd = ["adb"]
         if device_id:
@@ -369,6 +378,18 @@ class AdbUtils:
         if device_id:
             cmd += ["-s", device_id]
         cmd += ["shell", f"rm -rf {path}"]
+        subprocess.run(cmd, capture_output=True, text=True)
+
+    @staticmethod
+    def clear_folder_except(path: str, device_id: str = None, keep: str = "") -> None:
+        cmd = ["adb"]
+        if device_id:
+            cmd += ["-s", device_id]
+        find_expr = f"find {path} -mindepth 1 -maxdepth 1"
+        if keep:
+            find_expr += f" ! -name '{keep}'"
+        find_expr += " -exec rm -rf {} +"
+        cmd += ["shell", find_expr]
         subprocess.run(cmd, capture_output=True, text=True)
 
     @staticmethod

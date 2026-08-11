@@ -26,14 +26,15 @@ class AndroidAppController:
 
         self.timestamp = DateTimeUtils.get_timestamped()
         default_path = AdbUtils.get_downloads_path(self.d.serial) + "/" + path
+        self.default_path = default_path
         self.store_path = default_path + "/" + self.timestamp
 
-        AdbUtils.remove_folder(default_path)
+        AdbUtils.clear_folder_except(default_path, self.d.serial, keep=AUDIO_FILE)
         AdbUtils.create_tmp_dir(self.store_path, self.d.serial)
 
         device_audio_file = default_path + "/" + AUDIO_FILE
         AdbUtils.push_file(STATIC_FOLDER + AUDIO_FILE, device_audio_file)
-        time.sleep(5)
+        time.sleep(4)
 
         self.string_extras = {
             "CALL_MODE": call_mode,
@@ -70,6 +71,7 @@ class AndroidAppController:
     def wait_for_activity(self, resource_id: str, timeout: int = DEFAULT_TIMEOUT) -> bool:
         self.d.wait_activity(resource_id, timeout=timeout)
         if self.d.app_current().get("activity") == resource_id:
+            time.sleep(1)
             return True
         print(f"[AndroidAppController] Cannot navigate to {resource_id}")
         return False

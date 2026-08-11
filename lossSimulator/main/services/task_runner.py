@@ -60,19 +60,35 @@ def run_app(
         time.sleep(timeout)
 
         if not pull_audio:
+            try:
+                controller.press("back")
+                controller.press("back")
+                # Give the app a moment to finish writing its result log
+                # before force-stopping it — otherwise stop_app() can kill
+                # the process mid-write and the log never lands on disk.
+                time.sleep(1)
+                controller.stop_app()
+            except Exception as e:
+                print(f"[run_app] Teardown exception (ignored, pull_audio=False): {e}")
+
+            log_files = []
+            try:
+                txt_paths = AdbUtils.list_device_files(controller.default_path, device_id, "*.txt")
+                if txt_paths:
+                    FileUtils.make_dir(specific_folder)
+                    for txt_path in txt_paths:
+                        AdbUtils.pull_files(txt_path, specific_folder, device_id)
+                        log_files.append(os.path.abspath(os.path.join(specific_folder, os.path.basename(txt_path))))
+            except Exception as e:
+                print(f"[run_app] Failed to pull result log (ignored, pull_audio=False): {e}")
+
             myCache[task_id] = {
                 "time": time.time(),
                 "duration": timeout,
                 "audioFiles": [],
-                "zrtcLog": [],
+                "zrtcLog": log_files,
                 "skipped": True,
             }
-            try:
-                controller.press("back")
-                controller.press("back")
-                controller.stop_app()
-            except Exception as e:
-                print(f"[run_app] Teardown exception (ignored, pull_audio=False): {e}")
             return
 
         controller.press("back")
