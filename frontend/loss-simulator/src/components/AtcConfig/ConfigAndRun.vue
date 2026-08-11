@@ -178,6 +178,8 @@ function validateNumTests() {
     generateSampleConfigsForDred()
   } else if (trimmed === 'full') {
     generateFullSweepConfigs()
+  } else if (/^full:\d+$/.test(trimmed)) {
+    generateFullSweepConfigs(parseInt(trimmed.split(':')[1], 10))
   } else {
     const value = Math.max(0, parseInt(trimmed, 10) || 0)
     numTests.value = String(value)
@@ -211,6 +213,7 @@ function generateSampleConfigsForPlc() {
       }
     }
   }
+  numTests.value = String(configs.value.length + configsBuffer.value.length)
 }
 
 function generateSampleConfigsForDred() {
@@ -238,31 +241,45 @@ function generateSampleConfigsForDred() {
       }
     }
   }
+  numTests.value = String(configs.value.length + configsBuffer.value.length)
 }
 
-// For every ATC network config: 10 paired loss/delay sub-cases, run with
-// Opus PLC enabled for all of them, then the same set again with PLC off.
-function generateFullSweepConfigs() {
+// For every ATC network config: the full loss x delay cross product (10
+// loss values x 10 delay values, independently varied — not paired by
+// index), run with Opus PLC enabled for all of them, then the same set
+// again with PLC off. `skip` drops the first N sequential cases — use it
+// to resume a "full" run interrupted partway through, without re-testing
+// already-done cases.
+function generateFullSweepConfigs(skip = 0) {
   configs.value = []
   configsBuffer.value = []
   let index = 0
   for (const usePlc of [true, false]) {
     for (const curNetwork of EVAL_NETWORK_TYPE) {
-      for (let i = 0; i < EVAL_SUBCASE_LOSS.length; i++) {
-        let networkData = curNetwork.data
-        try {
-          const json = JSON.parse(networkData)
-          json.down.loss.percentage = EVAL_SUBCASE_LOSS[i]
-          json.down.delay.delay = String(EVAL_SUBCASE_DELAY[i])
-          networkData = JSON.stringify(json)
-        } catch { /* invalid JSON — skip mutation */ }
-        const test = createTestPlc(index, 6, usePlc, curNetwork.name, networkData)
-        if (configs.value.length < MAX_CONFIG_SIZE) configs.value.push(test)
-        else configsBuffer.value.push(test)
-        index++
+      for (const loss of EVAL_SUBCASE_LOSS) {
+        for (const rtt of EVAL_SUBCASE_DELAY) {
+          if (index < skip) { index++; continue }
+          let networkData = curNetwork.data
+          try {
+            const json = JSON.parse(networkData)
+            json.down.loss.percentage = loss
+            // Some base profiles (3G-Poor, 4G-Poor, 5G-Poor, Wifi-Average/Poor)
+            // carry a non-zero loss.correlation; the ATC daemon rejects
+            // correlation > 0 paired with 0% loss ("loss correlation requires
+            // loss to be set"), so keep them consistent with our override.
+            json.down.loss.correlation = loss === 0 ? 0 : json.down.loss.correlation
+            json.down.delay.delay = String(rtt)
+            networkData = JSON.stringify(json)
+          } catch { /* invalid JSON — skip mutation */ }
+          const test = createTestPlc(index, 6, usePlc, curNetwork.name, networkData)
+          if (configs.value.length < MAX_CONFIG_SIZE) configs.value.push(test)
+          else configsBuffer.value.push(test)
+          index++
+        }
       }
     }
   }
+  numTests.value = String(configs.value.length + configsBuffer.value.length)
 }
 
 // ── CRUD ──────────────────────────────────────────────────────────────────────
@@ -433,6 +450,11 @@ async function runTests() {
       await new Promise(resolve => setTimeout(resolve, RETRY_DELAY))
     }
   }
+
+  // The move-every-50 loop above only flushes when entering a NEW batch —
+  // the final batch (full or a partial tail) has nothing after it to
+  // trigger that, so it never gets moved out of public/audio without this.
+  try { await moveAudios(props.deviceId) } catch { /* best-effort */ }
 }
 
 function openToast(componentName = '', header = '', message = '', timeout = TOAST_TIMEOUT) {

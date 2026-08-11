@@ -63,6 +63,10 @@ def run_app(
             try:
                 controller.press("back")
                 controller.press("back")
+                # Give the app a moment to finish writing its result log
+                # before force-stopping it — otherwise stop_app() can kill
+                # the process mid-write and the log never lands on disk.
+                time.sleep(1)
                 controller.stop_app()
             except Exception as e:
                 print(f"[run_app] Teardown exception (ignored, pull_audio=False): {e}")

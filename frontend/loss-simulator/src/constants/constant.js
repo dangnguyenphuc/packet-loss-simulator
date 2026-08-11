@@ -145,30 +145,21 @@ export const EVAL_DRED = [
 	100
 ]
 
-// Paired severity sweep (index-aligned): sub-case i combines
-// EVAL_SUBCASE_LOSS[i] with EVAL_SUBCASE_DELAY[i], from clean to worst-case.
+// Full cross product (every loss value x every delay value, independently
+// varied — not paired by index) used by generateFullSweepConfigs(). Reduced
+// from 10x10 to 5x4 (760 total tests: 19 networks x 20 combos x 2 PLC
+// states) so each network condition gets fewer, still range-spanning cases.
 export const EVAL_SUBCASE_LOSS = [
 	0,
-	5,
 	10,
-	15,
-	20,
 	30,
-	40,
 	50,
-	70,
 	90,
 ]
 export const EVAL_SUBCASE_DELAY = [
 	50,
-	80,
-	120,
 	160,
-	200,
-	300,
 	400,
-	600,
-	900,
 	1200,
 ]
 

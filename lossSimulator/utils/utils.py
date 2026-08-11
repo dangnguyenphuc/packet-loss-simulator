@@ -381,6 +381,18 @@ class AdbUtils:
         subprocess.run(cmd, capture_output=True, text=True)
 
     @staticmethod
+    def clear_folder_except(path: str, device_id: str = None, keep: str = "") -> None:
+        cmd = ["adb"]
+        if device_id:
+            cmd += ["-s", device_id]
+        find_expr = f"find {path} -mindepth 1 -maxdepth 1"
+        if keep:
+            find_expr += f" ! -name '{keep}'"
+        find_expr += " -exec rm -rf {} +"
+        cmd += ["shell", find_expr]
+        subprocess.run(cmd, capture_output=True, text=True)
+
+    @staticmethod
     def get_downloads_path(device_id: str = None) -> str:
         from utils.constants import ANDROID_DOWNLOAD_PATH
         return AdbUtils.get_default_path(device_id) + "/" + ANDROID_DOWNLOAD_PATH
