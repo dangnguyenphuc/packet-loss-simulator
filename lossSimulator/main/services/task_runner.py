@@ -72,13 +72,17 @@ def run_app(
                 print(f"[run_app] Teardown exception (ignored, pull_audio=False): {e}")
 
             log_files = []
+            neteq_score = None
             try:
                 txt_paths = AdbUtils.list_device_files(controller.default_path, device_id, "*.txt")
                 if txt_paths:
                     FileUtils.make_dir(specific_folder)
                     for txt_path in txt_paths:
                         AdbUtils.pull_files(txt_path, specific_folder, device_id)
-                        log_files.append(os.path.abspath(os.path.join(specific_folder, os.path.basename(txt_path))))
+                        local_path = os.path.abspath(os.path.join(specific_folder, os.path.basename(txt_path)))
+                        log_files.append(local_path)
+                        if neteq_score is None:
+                            neteq_score = FileUtils.read_neteq_score(local_path)
             except Exception as e:
                 print(f"[run_app] Failed to pull result log (ignored, pull_audio=False): {e}")
 
@@ -87,6 +91,7 @@ def run_app(
                 "duration": timeout,
                 "audioFiles": [],
                 "zrtcLog": log_files,
+                "neteqScore": neteq_score,
                 "skipped": True,
             }
             return
@@ -106,11 +111,18 @@ def run_app(
             )
             FileUtils.remove_folder(specific_folder + "/" + controller.store_path.split("/")[-1])
         finally:
+            log_files = FileUtils.get_log_files(specific_folder)
+            neteq_score = None
+            for log_file in log_files:
+                neteq_score = FileUtils.read_neteq_score(log_file)
+                if neteq_score is not None:
+                    break
             myCache[task_id] = {
                 "time": time.time(),
                 "duration": timeout,
                 "audioFiles": FileUtils.get_audio_files(specific_folder),
-                "zrtcLog": FileUtils.get_log_files(specific_folder),
+                "zrtcLog": log_files,
+                "neteqScore": neteq_score,
             }
     except Exception as e:
         print(f"[run_app] Exception: {e}")

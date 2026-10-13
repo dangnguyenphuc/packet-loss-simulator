@@ -90,7 +90,7 @@ import {
 } from '../../constants/constant'
 import AtcConfig from './AtcConfig.vue'
 import Result from './Result.vue'
-import { applyConfig, deleteShape, runApp, getAppRes, stopApp, removeFolder, moveAudios } from '../../utils/specific'
+import { applyConfig, deleteShape, runApp, getAppRes, stopApp, removeFolder, moveAudios, clearAudioFolder } from '../../utils/specific'
 import { DEFAULT_REQUEST_TIMEOUT } from '../../constants/api'
 
 const props = defineProps({
@@ -106,6 +106,9 @@ const pullAudio       = ref(false)
 const configs         = ref([])
 const configsBuffer   = ref([])
 const expanded        = ref([])
+// Only a "full"/"full:N" sweep gets moved out of public/audio during/after
+// runTests() — other runs (plain counts, "plc", "dred") stay put.
+const isFullSweep     = ref(false)
 const complexityOptions = Array.from({ length: 10 }, (_, i) => i + 1)
 
 // ── helpers ──────────────────────────────────────────────────────────────────
@@ -172,6 +175,7 @@ function createTestDred(index, complexity, decComplexity, dredDuration, networkT
 
 function validateNumTests() {
   const trimmed = numTests.value.trim()
+  isFullSweep.value = trimmed === 'full' || /^full:\d+$/.test(trimmed)
   if (trimmed === 'plc') {
     generateSampleConfigsForPlc()
   } else if (trimmed === 'dred') {
@@ -244,38 +248,65 @@ function generateSampleConfigsForDred() {
   numTests.value = String(configs.value.length + configsBuffer.value.length)
 }
 
+// 5 extra fixed (loss, rtt) pairs added on top of the cross product, per
+// network — reusing rtt values dropped when EVAL_SUBCASE_DELAY was
+// trimmed to 4 (80, 120, 200, 300, 600), each paired with the loss value
+// it was originally index-aligned with. Keep this in sync with
+// neteq_eval.py's EXTRA_CASES if it changes — that script mirrors this
+// exact list to reconstruct sweep progress.
+const EXTRA_CASES = [
+  { loss: 5, rtt: 80 },
+  { loss: 10, rtt: 120 },
+  { loss: 20, rtt: 200 },
+  { loss: 30, rtt: 300 },
+  { loss: 50, rtt: 600 },
+]
+
 // For every ATC network config: the full loss x delay cross product (10
-// loss values x 10 delay values, independently varied — not paired by
-// index), run with Opus PLC enabled for all of them, then the same set
-// again with PLC off. `skip` drops the first N sequential cases — use it
-// to resume a "full" run interrupted partway through, without re-testing
-// already-done cases.
+// loss values x 4 delay values, independently varied — not paired by
+// index) plus the 5 EXTRA_CASES, run with Opus PLC enabled for all of
+// them, then the same set again with PLC off. `skip` drops the first N
+// sequential cases — use it to resume a "full" run interrupted partway
+// through, without re-testing already-done cases.
+// TEMP: shrink "full" to 1/4 size for a quick pass — set back to 1 to
+// restore the full sweep. Must match neteq_eval.py's TEMP_SWEEP_STRIDE.
+const TEMP_SWEEP_STRIDE = 4
+
 function generateFullSweepConfigs(skip = 0) {
   configs.value = []
   configsBuffer.value = []
   let index = 0
+  const combos = []
+  for (const loss of EVAL_SUBCASE_LOSS) {
+    for (const rtt of EVAL_SUBCASE_DELAY) {
+      combos.push({ loss, rtt })
+    }
+  }
+  combos.push(...EXTRA_CASES)
+  const strided = combos.filter((_, i) => i % TEMP_SWEEP_STRIDE === 0)
+  combos.length = 0
+  combos.push(...strided)
+
   for (const usePlc of [true, false]) {
     for (const curNetwork of EVAL_NETWORK_TYPE) {
-      for (const loss of EVAL_SUBCASE_LOSS) {
-        for (const rtt of EVAL_SUBCASE_DELAY) {
-          if (index < skip) { index++; continue }
-          let networkData = curNetwork.data
-          try {
-            const json = JSON.parse(networkData)
-            json.down.loss.percentage = loss
-            // Some base profiles (3G-Poor, 4G-Poor, 5G-Poor, Wifi-Average/Poor)
-            // carry a non-zero loss.correlation; the ATC daemon rejects
-            // correlation > 0 paired with 0% loss ("loss correlation requires
-            // loss to be set"), so keep them consistent with our override.
-            json.down.loss.correlation = loss === 0 ? 0 : json.down.loss.correlation
-            json.down.delay.delay = String(rtt)
-            networkData = JSON.stringify(json)
-          } catch { /* invalid JSON — skip mutation */ }
-          const test = createTestPlc(index, 6, usePlc, curNetwork.name, networkData)
-          if (configs.value.length < MAX_CONFIG_SIZE) configs.value.push(test)
-          else configsBuffer.value.push(test)
-          index++
-        }
+      for (const { loss, rtt } of combos) {
+        if (index < skip) { index++; continue }
+        let networkData = curNetwork.data
+        try {
+          const json = JSON.parse(networkData)
+          json.down.loss.percentage = loss
+          // Some base profiles (3G-Poor, 4G-Poor, 5G-Poor, Wifi-Average/Poor)
+          // carry a non-zero loss.correlation; the ATC daemon rejects
+          // correlation > 0 paired with 0% loss ("loss correlation requires
+          // loss to be set"), so keep them consistent with our override.
+          json.down.loss.correlation = loss === 0 ? 0 : json.down.loss.correlation
+          json.down.delay.delay = String(rtt)
+          networkData = JSON.stringify(json)
+        } catch { /* invalid JSON — skip mutation */ }
+        const test = createTestPlc(index, 6, usePlc, curNetwork.name, networkData)
+        if (configs.value.length < MAX_CONFIG_SIZE) configs.value.push(test)
+        else configsBuffer.value.push(test)
+        index++
       }
     }
   }
@@ -390,18 +421,33 @@ async function startAndroidApp(index) {
       runAppRes = await getAppRes(startAppRes.taskId)
 
       if (runAppRes?.status === 'done' && !shouldPullAudio) {
+        // A neteqScore of 0 (or missing) means the pulled log is bad —
+        // not a real "network was catastrophic" score — so treat it like
+        // any other pull failure and retest instead of accepting it.
+        if (!runAppRes.result?.neteqScore) {
+          const err = new Error('Invalid neteqScore (0 or missing)')
+          err.storeFolder = runAppRes.result?.zrtcLog?.[0]?.split('/').slice(-2, -1).join('/')
+          throw err
+        }
         test.result = {
           status:     RES_STATUS.SUCCESS,
           audioFiles: [],
           logFile:    runAppRes.result?.zrtcLog?.[0] ?? null,
+          neteqScore: runAppRes.result.neteqScore,
         }
         test.status = TEST_STATUS.PASS
         break
       } else if (runAppRes?.status === 'done' && runAppRes.result.audioFiles?.length > 0 && runAppRes.result.zrtcLog?.length > 0) {
+        if (!runAppRes.result?.neteqScore) {
+          const err = new Error('Invalid neteqScore (0 or missing)')
+          err.storeFolder = runAppRes.result.zrtcLog?.[0]?.split('/').slice(-2, -1).join('/')
+          throw err
+        }
         test.result = {
           status:     RES_STATUS.SUCCESS,
           audioFiles: runAppRes.result.audioFiles,
           logFile:    runAppRes.result.zrtcLog[0],
+          neteqScore: runAppRes.result.neteqScore,
         }
         test.status = TEST_STATUS.PASS
         break
@@ -432,13 +478,16 @@ async function startAndroidApp(index) {
 
 async function runTests() {
   resetTests()
+  try { await clearAudioFolder() } catch { /* best-effort */ }
   const totalTests = configs.value.length + configsBuffer.value.length
   let factor = 0
 
   for (let i = 0; i < totalTests; i++) {
     if (i === MAX_CONFIG_SIZE * (factor + 1)) {
       configs.value = configsBuffer.value.splice(0, MAX_CONFIG_SIZE)
-      try { await moveAudios(props.deviceId) } catch { /* best-effort */ }
+      if (isFullSweep.value) {
+        try { await moveAudios(props.deviceId) } catch { /* best-effort */ }
+      }
       factor++
     }
     const idx = i - MAX_CONFIG_SIZE * factor
@@ -454,7 +503,11 @@ async function runTests() {
   // The move-every-50 loop above only flushes when entering a NEW batch —
   // the final batch (full or a partial tail) has nothing after it to
   // trigger that, so it never gets moved out of public/audio without this.
-  try { await moveAudios(props.deviceId) } catch { /* best-effort */ }
+  // Only "full"/"full:N" sweeps get moved at all — other runs stay in
+  // public/audio.
+  if (isFullSweep.value) {
+    try { await moveAudios(props.deviceId) } catch { /* best-effort */ }
+  }
 }
 
 function openToast(componentName = '', header = '', message = '', timeout = TOAST_TIMEOUT) {

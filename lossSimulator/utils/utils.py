@@ -268,6 +268,19 @@ class FileUtils:
     def get_log_files(log_path: str = STATIC_FOLDER) -> list[str]:
         return [os.path.abspath(p) for p in FileUtils.list_file(log_path, LOG_TYPE)]
 
+    @staticmethod
+    def read_neteq_score(path: str):
+        """Parse the `Neteq: X.XXXXX` line the app writes to its result .txt file."""
+        try:
+            with open(path) as f:
+                for line in f:
+                    line = line.strip()
+                    if line.lower().startswith("neteq:"):
+                        return float(line.split(":", 1)[1].strip())
+        except (OSError, ValueError):
+            pass
+        return None
+
 
 class AdbUtils:
     @staticmethod

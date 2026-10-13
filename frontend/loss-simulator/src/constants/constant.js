@@ -146,14 +146,19 @@ export const EVAL_DRED = [
 ]
 
 // Full cross product (every loss value x every delay value, independently
-// varied — not paired by index) used by generateFullSweepConfigs(). Reduced
-// from 10x10 to 5x4 (760 total tests: 19 networks x 20 combos x 2 PLC
-// states) so each network condition gets fewer, still range-spanning cases.
+// varied — not paired by index) used by generateFullSweepConfigs(). 10x4
+// (1520 total tests: 19 networks x 40 combos x 2 PLC states) — 2x the
+// previous 5x4/760-test grid, widened back out on the loss axis.
 export const EVAL_SUBCASE_LOSS = [
 	0,
+	5,
 	10,
+	15,
+	20,
 	30,
+	40,
 	50,
+	70,
 	90,
 ]
 export const EVAL_SUBCASE_DELAY = [
