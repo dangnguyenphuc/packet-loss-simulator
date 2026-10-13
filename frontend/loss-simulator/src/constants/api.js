@@ -8,6 +8,7 @@ export const ANDROID_TASK_INSTALL_ENDPOINT = (device) => `${DEVICE_ENDPOINT}/${d
 export const ANDROID_TASK_MOVE_ENDPOINT = (device) => `${DEVICE_ENDPOINT}/${device}/move`;
 export const ANDROID_TASK_DETAIL_ENDPOINT = (task_id) => `/api/tasks/${task_id}`;
 export const STORE_FOLDER_ENDPOINT = (folder) => `/api/files/${folder}`;
+export const CLEAR_AUDIO_ENDPOINT = '/api/files';
 
 export const MONITORING_INTERVAL = 10000;
 export const DEFAULT_REQUEST_TIMEOUT = 5000;

@@ -174,6 +174,23 @@ class FileUtils:
         shutil.rmtree(os.path.join(base, folder), ignore_errors=True)
 
     @staticmethod
+    def clear_storing_folder() -> None:
+        """Remove every entry inside public/audio, keeping the folder itself."""
+        from utils.constants import DESKTOP_STATIC_FOLDER
+        base = FileUtils.get_abs_path(str(settings.BASE_DIR) + "/" + DESKTOP_STATIC_FOLDER)
+        if not os.path.isdir(base):
+            return
+        for name in os.listdir(base):
+            path = os.path.join(base, name)
+            if os.path.isdir(path):
+                shutil.rmtree(path, ignore_errors=True)
+            else:
+                try:
+                    os.remove(path)
+                except OSError:
+                    pass
+
+    @staticmethod
     def remove_stat_file(stat_type: str, path: str) -> None:
         file_path = os.path.join(path, f"{stat_type}.txt")
         if os.path.isfile(file_path):

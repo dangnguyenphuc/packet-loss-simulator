@@ -9,6 +9,7 @@ import {
     ANDROID_TASK_DETAIL_ENDPOINT,
     ANDROID_TASK_MOVE_ENDPOINT,
     STORE_FOLDER_ENDPOINT,
+    CLEAR_AUDIO_ENDPOINT,
     USER_ENDPOINT,
 } from '../constants/api.js';
 
@@ -139,6 +140,14 @@ export async function removeFolder(folderName) {
         return await axiosDelete(STORE_FOLDER_ENDPOINT(folderName));
     } catch (err) {
         throw new Error(`[DELETE] ${STORE_FOLDER_ENDPOINT(folderName)} failed: ${err.message}`);
+    }
+}
+
+export async function clearAudioFolder() {
+    try {
+        return await axiosDelete(CLEAR_AUDIO_ENDPOINT);
+    } catch (err) {
+        throw new Error(`[DELETE] ${CLEAR_AUDIO_ENDPOINT} failed: ${err.message}`);
     }
 }
 

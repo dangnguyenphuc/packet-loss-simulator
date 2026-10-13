@@ -9,8 +9,11 @@ from utils.constants import STATIC_FOLDER
 
 @method_decorator(csrf_exempt, name="dispatch")
 class FileView(View):
-    def delete(self, request, folder_name):
-        FileUtils.remove_storing_folder(folder_name)
+    def delete(self, request, folder_name=None):
+        if folder_name is None:
+            FileUtils.clear_storing_folder()
+        else:
+            FileUtils.remove_storing_folder(folder_name)
         return JsonResponse({"status": "deleted"}, status=200)
 
 

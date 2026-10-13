@@ -21,6 +21,7 @@ urlpatterns = [
     path("api/info", InfoView.as_view(), name="info"),
     path("api/devices/<str:device_id>/<str:type>", TaskRunView.as_view(), name="task"),
     path("api/tasks/<str:task_id>", TaskDetailView.as_view(), name="task-detail"),
+    path("api/files", FileView.as_view(), name="file-handler-clear-all"),
     path("api/files/<str:folder_name>", FileView.as_view(), name="file-handler"),
     path("api/stats", StatView.as_view(), name="stats"),
 ]
